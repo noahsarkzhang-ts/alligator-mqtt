@@ -30,7 +30,6 @@ public class MemoryEventBus implements EventBus {
     private static final Logger LOG = LoggerFactory.getLogger(MemoryEventBus.class);
 
     private BlockingQueue<PublishedMessage> messages;
-    private ISubscriptionsDirectory subscriptions;
     private Authorizator authorizator;
     private SessionManager sessionManager;
 
@@ -44,8 +43,6 @@ public class MemoryEventBus implements EventBus {
         authorizator = Authorizator.getInstance();
         sessionManager = SessionManager.getInstance();
 
-        subscriptions = new CTrieSubscriptionDirectory();
-        subscriptions.init(new MemorySubscriptionsRepository());
     }
 
     public static MemoryEventBus getInstance() {
@@ -74,7 +71,7 @@ public class MemoryEventBus implements EventBus {
         Topic topic = message.getTopic();
         MqttQoS publishingQos = message.getPublishingQos();
 
-        Set<Subscription> topicMatchingSubscriptions = subscriptions.matchQosSharpening(topic);
+        Set<Subscription> topicMatchingSubscriptions = PostOffice.getInstance().matchQosSharpening(topic);
         LOG.info("Matched Subscription: {}", topicMatchingSubscriptions.size());
 
         for (final Subscription sub : topicMatchingSubscriptions) {

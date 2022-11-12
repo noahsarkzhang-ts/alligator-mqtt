@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
@@ -85,6 +86,8 @@ public class PostOffice {
         for (Subscription subscription : newSubscriptions) {
             subscriptions.add(subscription);
         }
+
+        LOG.info("Ctrie tree:{}",subscriptions.dumpTree());
 
         // add the subscriptions to Session
         MqttSession session = sessionManager.retrieve(clientID);
@@ -151,6 +154,10 @@ public class PostOffice {
 
     public void receivedPublishQos2(MqttConnection connection, MqttPublishMessage mqttPublishMessage, String username) {
 
+    }
+
+    public Set<Subscription> matchQosSharpening(Topic topic) {
+        return subscriptions.matchQosSharpening(topic);
     }
 
 }

@@ -95,7 +95,7 @@ public class MqttEntryHandler extends ChannelInboundHandlerAdapter {
                 }
             });
         } finally {
-            ReferenceCountUtil.release(msg);
+            //ReferenceCountUtil.release(msg);
         }
     }
 
