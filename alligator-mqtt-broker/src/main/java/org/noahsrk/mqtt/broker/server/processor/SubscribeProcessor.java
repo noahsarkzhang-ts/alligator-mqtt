@@ -29,6 +29,9 @@ public class SubscribeProcessor implements MessageProcessor {
         MqttSubscribeMessage message = (MqttSubscribeMessage) msg;
 
         final String clientID = NettyUtils.clientID(channel);
+
+        LOG.info("SUBSCRIBE received , CId={}, channel: {}", clientID, channel);
+
         if (!conn.isConnected()) {
             LOG.warn("SUBSCRIBE received on already closed connection, CId={}, channel: {}", clientID, channel);
             // dropConnection();

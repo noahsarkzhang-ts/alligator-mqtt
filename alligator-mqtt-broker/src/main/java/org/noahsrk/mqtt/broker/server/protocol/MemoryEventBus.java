@@ -2,6 +2,7 @@ package org.noahsrk.mqtt.broker.server.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import org.noahsrk.mqtt.broker.server.common.DebugUtils;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.context.SessionManager;
 import org.noahsrk.mqtt.broker.server.security.Authorizator;
@@ -53,6 +54,9 @@ public class MemoryEventBus implements EventBus {
 
     @Override
     public boolean emit(PublishedMessage message) {
+
+        LOG.info("Receive a PublishedMessage:{},{}", message.getTopic(), message.getPublishingQos());
+
         return messages.offer(message);
     }
 
@@ -64,11 +68,14 @@ public class MemoryEventBus implements EventBus {
     @Override
     public void publish2Subscribers(PublishedMessage message) {
 
+        LOG.info("Push a PublishedMessage:{},{}", message.getTopic(), message.getPublishingQos());
+
         ByteBuf origPayload = message.getPayload();
         Topic topic = message.getTopic();
         MqttQoS publishingQos = message.getPublishingQos();
 
         Set<Subscription> topicMatchingSubscriptions = subscriptions.matchQosSharpening(topic);
+        LOG.info("Matched Subscription: {}", topicMatchingSubscriptions.size());
 
         for (final Subscription sub : topicMatchingSubscriptions) {
             MqttQoS qos = lowerQosToTheSubscriptionDesired(sub, publishingQos);

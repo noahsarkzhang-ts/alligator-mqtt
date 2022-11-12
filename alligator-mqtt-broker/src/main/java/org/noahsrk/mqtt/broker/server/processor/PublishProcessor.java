@@ -40,7 +40,7 @@ public class PublishProcessor implements MessageProcessor {
         final String topicName = message.variableHeader().topicName();
         final String clientId = conn.getClientId();
 
-        LOG.trace("Processing PUBLISH message. CId={}, topic: {}, messageId: {}, qos: {}", clientId, topicName,
+        LOG.info("Processing PUBLISH message. CId={}, topic: {}, messageId: {}, qos: {}", clientId, topicName,
                 message.variableHeader().packetId(), qos);
 
         ByteBuf payload = message.payload();
