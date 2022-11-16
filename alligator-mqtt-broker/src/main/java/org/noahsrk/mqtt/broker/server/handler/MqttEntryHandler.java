@@ -33,18 +33,14 @@ public class MqttEntryHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger LOG = LoggerFactory.getLogger(MqttEntryHandler.class);
 
-    private static final String ATTR_CONNECTION = "connection";
-    private static final AttributeKey<Object> ATTR_KEY_CONNECTION = AttributeKey.valueOf(ATTR_CONNECTION);
-
     private Dispatcher dispatcher = new Dispatcher();
 
-
     private static void mqttConnection(Channel channel, MqttConnection connection) {
-        channel.attr(ATTR_KEY_CONNECTION).set(connection);
+        NettyUtils.connection(channel, connection);
     }
 
     private static MqttConnection mqttConnection(Channel channel) {
-        return (MqttConnection) channel.attr(ATTR_KEY_CONNECTION).get();
+        return NettyUtils.connection(channel);
     }
 
     @Override
@@ -59,7 +55,9 @@ public class MqttEntryHandler extends ChannelInboundHandlerAdapter {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         final MqttConnection mqttConnection = mqttConnection(ctx.channel());
         // TODO 断线处理
-        // mqttConnection.handleConnectionLost();
+        if (mqttConnection != null) {
+            mqttConnection.handleConnectionLost();
+        }
     }
 
     @Override
@@ -106,7 +104,12 @@ public class MqttEntryHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        super.userEventTriggered(ctx, evt);
+
+        if (evt instanceof InflightResenderHandler.ResendNotAckedPublishes) {
+            final MqttConnection mqttConnection = mqttConnection(ctx.channel());
+            mqttConnection.resendNotAckedPublishes();
+        }
+        ctx.fireUserEventTriggered(evt);
     }
 
     @Override

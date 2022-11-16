@@ -6,6 +6,10 @@ import org.noahsrk.mqtt.broker.server.processor.ConnectMessageProcessor;
 import org.noahsrk.mqtt.broker.server.processor.DisconnectProcessor;
 import org.noahsrk.mqtt.broker.server.processor.MessageProcessor;
 import org.noahsrk.mqtt.broker.server.processor.PingReqProcessor;
+import org.noahsrk.mqtt.broker.server.processor.PubAckProcessor;
+import org.noahsrk.mqtt.broker.server.processor.PubCompProcessor;
+import org.noahsrk.mqtt.broker.server.processor.PubRecProcessor;
+import org.noahsrk.mqtt.broker.server.processor.PubRelProcessor;
 import org.noahsrk.mqtt.broker.server.processor.PublishProcessor;
 import org.noahsrk.mqtt.broker.server.processor.SubscribeProcessor;
 import org.noahsrk.mqtt.broker.server.processor.UnsubscribeProcessor;
@@ -30,6 +34,10 @@ public class Dispatcher {
         processors.put(MqttMessageType.SUBSCRIBE, new SubscribeProcessor());
         processors.put(MqttMessageType.UNSUBSCRIBE, new UnsubscribeProcessor());
         processors.put(MqttMessageType.PUBLISH, new PublishProcessor());
+        processors.put(MqttMessageType.PUBACK, new PubAckProcessor());
+        processors.put(MqttMessageType.PUBREC, new PubRecProcessor());
+        processors.put(MqttMessageType.PUBREL, new PubRelProcessor());
+        processors.put(MqttMessageType.PUBCOMP, new PubCompProcessor());
 
         // TODO 添加消息处理器
     }

@@ -2,13 +2,9 @@ package org.noahsrk.mqtt.broker.server.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
-import org.noahsrk.mqtt.broker.server.common.DebugUtils;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.context.SessionManager;
 import org.noahsrk.mqtt.broker.server.security.Authorizator;
-import org.noahsrk.mqtt.broker.server.subscription.CTrieSubscriptionDirectory;
-import org.noahsrk.mqtt.broker.server.subscription.ISubscriptionsDirectory;
-import org.noahsrk.mqtt.broker.server.subscription.MemorySubscriptionsRepository;
 import org.noahsrk.mqtt.broker.server.subscription.Subscription;
 import org.noahsrk.mqtt.broker.server.subscription.Topic;
 import org.slf4j.Logger;
@@ -72,10 +68,13 @@ public class MemoryEventBus implements EventBus {
         MqttQoS publishingQos = message.getPublishingQos();
 
         Set<Subscription> topicMatchingSubscriptions = PostOffice.getInstance().matchQosSharpening(topic);
-        LOG.info("Matched Subscription: {}", topicMatchingSubscriptions.size());
+        LOG.info("Matched Subscription size: {}", topicMatchingSubscriptions.size());
 
         for (final Subscription sub : topicMatchingSubscriptions) {
-            MqttQoS qos = lowerQosToTheSubscriptionDesired(sub, publishingQos);
+
+            LOG.info("Matched Subscription: {}, publishingQos: {}", sub.toString(), publishingQos);
+
+            MqttQoS qos = PostOffice.getInstance().lowerQosToTheSubscriptionDesired(sub, publishingQos);
             MqttSession targetSession = sessionManager.retrieve(sub.getClientId());
 
             boolean isSessionPresent = targetSession != null;
@@ -98,13 +97,6 @@ public class MemoryEventBus implements EventBus {
                         sub.getTopicFilter(), qos);
             }
         }
-    }
-
-    private MqttQoS lowerQosToTheSubscriptionDesired(Subscription sub, MqttQoS qos) {
-        if (qos.value() > sub.getRequestedQos().value()) {
-            qos = sub.getRequestedQos();
-        }
-        return qos;
     }
 
 }

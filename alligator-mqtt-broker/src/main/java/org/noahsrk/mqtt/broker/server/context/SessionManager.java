@@ -21,6 +21,7 @@ public class SessionManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(SessionManager.class);
 
+    // 存放会话信息，定期清除功能待补充 TODO
     private final ConcurrentMap<String, MqttSession> pool = new ConcurrentHashMap<>();
 
     private static class Holder {
@@ -35,8 +36,10 @@ public class SessionManager {
     }
 
     public void bindToSession(MqttConnection conn, MqttConnectMessage msg, String clientId) {
+        boolean clean = msg.variableHeader().isCleanSession();
 
-        if (!pool.containsKey(clientId)) {
+        // case 1 session not existing.
+        if (!pool.containsKey(clientId) || clean) {
             // case 1
             final MqttSession newSession = createNewSession(conn, msg, clientId);
 
@@ -47,10 +50,32 @@ public class SessionManager {
             if (success) {
                 LOG.trace("case 1, not existing session with CId {}", clientId);
             }
-        } else {
-            LOG.trace("Existing session with CId {}", clientId);
+
+            return;
         }
 
+        // case 2 session existing
+        MqttSession oldSession = pool.get(clientId);
+        if (oldSession.disconnected()) {
+            oldSession.closeImmediately();
+            oldSession.disconnect();
+        }
+
+        copySessionConfig(msg, oldSession);
+        oldSession.bind(conn);
+
+        oldSession.markConnected();
+    }
+
+    private void copySessionConfig(MqttConnectMessage msg, MqttSession session) {
+        final boolean clean = msg.variableHeader().isCleanSession();
+        final Will will;
+        if (msg.variableHeader().isWillFlag()) {
+            will = createWill(msg);
+        } else {
+            will = null;
+        }
+        session.update(clean, will);
     }
 
     private MqttSession createNewSession(MqttConnection mqttConnection, MqttConnectMessage msg, String clientId) {
@@ -92,6 +117,5 @@ public class SessionManager {
         }
         session.disconnect();
     }
-
 
 }

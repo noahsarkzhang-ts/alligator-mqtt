@@ -109,5 +109,6 @@ public class ConnectMessageProcessor implements MessageProcessor {
     private void postMessageHandle(MqttConnection connection, MqttConnectMessage msg, String clientId) {
         // TODO
         connection.initializeKeepAliveTimeout(msg, clientId);
+        connection.setupInflightResender(connection.getChannel());
     }
 }

@@ -43,6 +43,9 @@ public class PublishProcessor implements MessageProcessor {
         LOG.info("Processing PUBLISH message. CId={}, topic: {}, messageId: {}, qos: {}", clientId, topicName,
                 message.variableHeader().packetId(), qos);
 
+        // 重发功能待补充 TODO
+        final boolean dup = message.fixedHeader().isDup();
+
         ByteBuf payload = message.payload();
         final boolean retain = message.fixedHeader().isRetain();
         final Topic topic = new Topic(topicName);
