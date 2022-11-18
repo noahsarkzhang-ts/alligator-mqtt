@@ -8,8 +8,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageType;
-import io.netty.util.AttributeKey;
-import io.netty.util.ReferenceCountUtil;
 import org.noahsrk.mqtt.broker.server.context.MqttConnection;
 import org.noahsrk.mqtt.broker.server.processor.MessageProcessor;
 import org.noahsrk.mqtt.broker.server.common.NettyUtils;
@@ -81,7 +79,6 @@ public class MqttEntryHandler extends ChannelInboundHandlerAdapter {
             }
 
             processor.handleMessage(context, msg);
-
             // mqttConnection.handleMessage(msg);
         } catch (Throwable ex) {
             //ctx.fireExceptionCaught(ex);
@@ -92,8 +89,6 @@ public class MqttEntryHandler extends ChannelInboundHandlerAdapter {
                     LOG.info("Closed client channel due to exception in processing");
                 }
             });
-        } finally {
-            //ReferenceCountUtil.release(msg);
         }
     }
 

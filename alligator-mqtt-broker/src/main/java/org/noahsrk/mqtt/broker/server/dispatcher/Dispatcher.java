@@ -1,7 +1,6 @@
 package org.noahsrk.mqtt.broker.server.dispatcher;
 
 import io.netty.handler.codec.mqtt.MqttMessageType;
-import org.noahsrk.mqtt.broker.server.context.MqttConnection;
 import org.noahsrk.mqtt.broker.server.processor.ConnectMessageProcessor;
 import org.noahsrk.mqtt.broker.server.processor.DisconnectProcessor;
 import org.noahsrk.mqtt.broker.server.processor.MessageProcessor;

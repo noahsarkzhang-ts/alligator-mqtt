@@ -210,6 +210,8 @@ public class PostOffice {
 
         connection.sendPubAck(messageID);
 
+        // 1. case 1: retain = 1 且 payload 为 null, 清除 retain 消息
+        // 2. case2: retain = 1 且 payload 不为 null，则更新 retain 消息，每一个 topic，retain 消息只保留最新的一条。
         if (retain) {
             if (!payload.isReadable()) {
                 retainedRepository.cleanRetained(topic);
