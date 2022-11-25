@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentMap;
  * @author zhangxt
  * @date 2022/11/14 18:02
  **/
-public class MemoryRetainedRepository implements IRetainedRepository {
+public class MemoryRetainedRepository implements RetainedRepository {
 
     private final ConcurrentMap<Topic, RetainedMessage> pool = new ConcurrentHashMap<>();
 

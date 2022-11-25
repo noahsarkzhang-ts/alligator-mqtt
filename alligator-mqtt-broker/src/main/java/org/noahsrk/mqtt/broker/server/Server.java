@@ -103,7 +103,7 @@ public class Server {
         final MqttEntryHandler mqttHandler = new MqttEntryHandler();
 
         nettyAcceptor = new NettyAcceptor();
-        nettyAcceptor.initialize(mqttHandler, config, sslCtxCreator);
+        nettyAcceptor.startup(mqttHandler, config, sslCtxCreator);
 
         eventBusThread = new EventBusThread();
         eventBusThread.start();
@@ -150,7 +150,7 @@ public class Server {
 
         private PipelineInitializerFactory pipelineInitializerFactory = new PipelineInitializerFactory();
 
-        public void initialize(MqttEntryHandler mqttHandler, Configuration props, SslContextFactory sslCtxCreator) {
+        public void startup(MqttEntryHandler mqttHandler, Configuration props, SslContextFactory sslCtxCreator) {
             LOG.debug("Initializing Netty acceptor");
 
             initializerContext = new InitializerContext(props, mqttHandler);
@@ -169,20 +169,20 @@ public class Server {
                 channelClass = NioServerSocketChannel.class;
             }
 
-            initializePlainTCPTransport(props);
-            initializeWebSocketTransport(props);
+            listenTcpService(props);
+            listenWsService(props);
             if (initializerContext.securityPortsConfigured()) {
                 SslContext sslContext = sslCtxCreator.initSSLContext();
                 if (sslContext == null) {
-                    LOG.error("Can't initialize SSLHandler layer! Exiting, check your configuration of jks");
+                    LOG.error("Can't startup SSLHandler layer! Exiting, check your configuration of jks");
                     return;
                 }
-                initializeSSLTCPTransport(props, sslContext);
-                initializeWSSTransport(props, sslContext);
+                listenSslTcpService(props, sslContext);
+                listenWssService(props, sslContext);
             }
         }
 
-        private void initFactory(String host, int port, String protocol, final PipelineInitializer pipelieInitializer) {
+        private void bindService(String host, int port, String protocol, final PipelineInitializer pipelieInitializer) {
             LOG.debug("Initializing integration. Protocol={}", protocol);
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup).channel(channelClass)
@@ -208,7 +208,7 @@ public class Server {
             }
         }
 
-        private void initializePlainTCPTransport(Configuration props) {
+        private void listenTcpService(Configuration props) {
             LOG.debug("Configuring TCP MQTT transport");
 
             String host = props.getString(BrokerConstants.HOST_PROPERTY_NAME);
@@ -219,7 +219,7 @@ public class Server {
                 return;
             }
             int port = Integer.parseInt(tcpPortProp);
-            initFactory(host, port, "TCP MQTT", new PipelineInitializer() {
+            bindService(host, port, "TCP MQTT", new PipelineInitializer() {
 
                 @Override
                 void init(SocketChannel channel) {
@@ -230,7 +230,7 @@ public class Server {
             });
         }
 
-        private void initializeSSLTCPTransport(Configuration props, SslContext sslContext) {
+        private void listenSslTcpService(Configuration props, SslContext sslContext) {
             LOG.debug("Configuring SSL MQTT transport");
             String sslPortProp = props.getString(BrokerConstants.SSL_PORT_PROPERTY_NAME, BrokerConstants.DISABLED_PORT_BIND);
             if (BrokerConstants.DISABLED_PORT_BIND.equals(sslPortProp)) {
@@ -245,7 +245,7 @@ public class Server {
 
             LOG.debug("Starting SSL on port {}", sslPort);
 
-            initFactory(host, sslPort, "SSL MQTT", new PipelineInitializer() {
+            bindService(host, sslPort, "SSL MQTT", new PipelineInitializer() {
 
                 @Override
                 void init(SocketChannel channel) throws Exception {
@@ -257,7 +257,7 @@ public class Server {
             });
         }
 
-        private void initializeWebSocketTransport(Configuration props) {
+        private void listenWsService(Configuration props) {
             LOG.debug("Configuring Websocket MQTT transport");
             String webSocketPortProp = props.getString(BrokerConstants.WEB_SOCKET_PORT_PROPERTY_NAME, BrokerConstants.DISABLED_PORT_BIND);
             if (BrokerConstants.DISABLED_PORT_BIND.equals(webSocketPortProp)) {
@@ -269,7 +269,7 @@ public class Server {
 
             int port = Integer.parseInt(webSocketPortProp);
             String host = props.getString(BrokerConstants.HOST_PROPERTY_NAME);
-            initFactory(host, port, "Websocket MQTT", new PipelineInitializer() {
+            bindService(host, port, "Websocket MQTT", new PipelineInitializer() {
 
                 @Override
                 void init(SocketChannel channel) {
@@ -280,7 +280,7 @@ public class Server {
             });
         }
 
-        private void initializeWSSTransport(Configuration props, SslContext sslContext) {
+        private void listenWssService(Configuration props, SslContext sslContext) {
             LOG.debug("Configuring secure websocket MQTT transport");
             String sslPortProp = props.getString(BrokerConstants.WSS_PORT_PROPERTY_NAME, BrokerConstants.DISABLED_PORT_BIND);
             if (BrokerConstants.DISABLED_PORT_BIND.equals(sslPortProp)) {
@@ -293,7 +293,7 @@ public class Server {
             int sslPort = Integer.parseInt(sslPortProp);
             String host = props.getString(BrokerConstants.HOST_PROPERTY_NAME);
 
-            initFactory(host, sslPort, "Secure websocket", new PipelineInitializer() {
+            bindService(host, sslPort, "Secure websocket", new PipelineInitializer() {
 
                 @Override
                 void init(SocketChannel channel) throws Exception {

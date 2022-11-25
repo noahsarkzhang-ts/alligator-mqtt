@@ -13,15 +13,17 @@
  *
  * You may elect to redistribute this code under either of these licenses.
  */
-package org.noahsrk.mqtt.broker.server.subscription;
+package org.noahsrk.mqtt.broker.server.core.repository;
+
+import org.noahsrk.mqtt.broker.server.subscription.Subscription;
 
 import java.util.List;
 
-public interface ISubscriptionsRepository {
+public interface SubscriptionsRepository {
 
     List<Subscription> listAllSubscriptions();
 
     void addNewSubscription(Subscription subscription);
 
-    void removeSubscription(String topic, String clientID);
+    void removeSubscription(String topic, String clientId);
 }

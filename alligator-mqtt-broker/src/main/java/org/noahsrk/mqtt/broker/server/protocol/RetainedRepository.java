@@ -20,7 +20,7 @@ import org.noahsrk.mqtt.broker.server.subscription.Topic;
 
 import java.util.List;
 
-public interface IRetainedRepository {
+public interface RetainedRepository {
 
     void cleanRetained(Topic topic);
 

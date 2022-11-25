@@ -87,7 +87,7 @@ public class InflightResenderHandler extends ChannelDuplexHandler {
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         if (ctx.channel().isActive() && ctx.channel().isRegistered()) {
             // channelActive() event has been fired already, which means this.channelActive() will
-            // not be invoked. We have to initialize here instead.
+            // not be invoked. We have to startup here instead.
             initialize(ctx);
         } else {
             // channelActive() event has not been fired yet. this.channelActive() will be invoked
@@ -113,7 +113,7 @@ public class InflightResenderHandler extends ChannelDuplexHandler {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         // This method will be invoked only if this handler was added
         // before channelActive() event is fired. If a user adds this handler
-        // after the channelActive() event, initialize() will be called by beforeAdd().
+        // after the channelActive() event, startup() will be called by beforeAdd().
         initialize(ctx);
         super.channelActive(ctx);
     }

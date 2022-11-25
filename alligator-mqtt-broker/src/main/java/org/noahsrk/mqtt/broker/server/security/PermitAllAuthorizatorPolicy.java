@@ -19,7 +19,7 @@ package org.noahsrk.mqtt.broker.server.security;
 
 import org.noahsrk.mqtt.broker.server.subscription.Topic;
 
-public class PermitAllAuthorizatorPolicy implements IAuthorizatorPolicy {
+public class PermitAllAuthorizatorPolicy implements AuthorizatorPolicy {
 
     @Override
     public boolean canWrite(Topic topic, String user, String client) {

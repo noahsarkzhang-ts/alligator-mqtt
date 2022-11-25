@@ -15,6 +15,7 @@
  */
 package org.noahsrk.mqtt.broker.server.subscription;
 
+import org.noahsrk.mqtt.broker.server.core.repository.SubscriptionsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,15 +25,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public class CTrieSubscriptionDirectory implements ISubscriptionsDirectory {
+public class CTrieSubscriptionDirectory implements SubscriptionsDirectory {
 
     private static final Logger LOG = LoggerFactory.getLogger(CTrieSubscriptionDirectory.class);
 
     private CTrie ctrie;
-    private volatile ISubscriptionsRepository subscriptionsRepository;
+    private volatile SubscriptionsRepository subscriptionsRepository;
 
     @Override
-    public void init(ISubscriptionsRepository subscriptionsRepository) {
+    public void init(SubscriptionsRepository subscriptionsRepository) {
         LOG.info("Initializing CTrie");
         ctrie = new CTrie();
 

@@ -15,11 +15,13 @@
  */
 package org.noahsrk.mqtt.broker.server.subscription;
 
+import org.noahsrk.mqtt.broker.server.core.repository.SubscriptionsRepository;
+
 import java.util.Set;
 
-public interface ISubscriptionsDirectory {
+public interface SubscriptionsDirectory {
 
-    void init(ISubscriptionsRepository sessionsRepository);
+    void init(SubscriptionsRepository sessionsRepository);
 
     Set<Subscription> matchWithoutQosSharpening(Topic topic);
 

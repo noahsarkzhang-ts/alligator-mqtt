@@ -13,13 +13,15 @@
  *
  * You may elect to redistribute this code under either of these licenses.
  */
-package org.noahsrk.mqtt.broker.server.subscription;
+package org.noahsrk.mqtt.broker.server.core.repository;
+
+import org.noahsrk.mqtt.broker.server.subscription.Subscription;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class MemorySubscriptionsRepository implements ISubscriptionsRepository {
+public class MemorySubscriptionsRepository implements SubscriptionsRepository {
 
     private final List<Subscription> subscriptions = new ArrayList<>();
 
@@ -34,10 +36,10 @@ public class MemorySubscriptionsRepository implements ISubscriptionsRepository {
     }
 
     @Override
-    public void removeSubscription(String topic, String clientID) {
+    public void removeSubscription(String topic, String clientId) {
         subscriptions.stream()
-            .filter(s -> s.getTopicFilter().toString().equals(topic) && s.getClientId().equals(clientID))
-            .findFirst()
-            .ifPresent(subscriptions::remove);
+                .filter(s -> s.getTopicFilter().toString().equals(topic) && s.getClientId().equals(clientId))
+                .findFirst()
+                .ifPresent(subscriptions::remove);
     }
 }

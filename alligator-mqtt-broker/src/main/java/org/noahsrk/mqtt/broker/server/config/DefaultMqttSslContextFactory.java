@@ -93,7 +93,7 @@ public class DefaultMqttSslContextFactory implements SslContextFactory {
             LOG.info("The SSL context has been initialized successfully.");
             return sslContext;
         } catch (GeneralSecurityException | IOException ex) {
-            LOG.error("Unable to initialize SSL context.", ex);
+            LOG.error("Unable to startup SSL context.", ex);
             return null;
         }
     }

@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.context.SessionManager;
-import org.noahsrk.mqtt.broker.server.security.Authorizator;
+import org.noahsrk.mqtt.broker.server.security.PermitAllAuthorizator;
 import org.noahsrk.mqtt.broker.server.subscription.Subscription;
 import org.noahsrk.mqtt.broker.server.subscription.Topic;
 import org.slf4j.Logger;
@@ -26,7 +26,7 @@ public class MemoryEventBus implements EventBus {
     private static final Logger LOG = LoggerFactory.getLogger(MemoryEventBus.class);
 
     private BlockingQueue<PublishedMessage> messages;
-    private Authorizator authorizator;
+    private PermitAllAuthorizator authorizator;
     private SessionManager sessionManager;
 
     private static final class Holder {
@@ -36,7 +36,7 @@ public class MemoryEventBus implements EventBus {
     private MemoryEventBus() {
         messages = new LinkedBlockingQueue<>();
 
-        authorizator = Authorizator.getInstance();
+        authorizator = PermitAllAuthorizator.getInstance();
         sessionManager = SessionManager.getInstance();
 
     }
@@ -83,7 +83,7 @@ public class MemoryEventBus implements EventBus {
                         sub.getClientId(), sub.getTopicFilter(), qos);
                 //TODO determine the user bounded to targetSession
                 if (!authorizator.canRead(topic, "TODO", sub.getClientId())) {
-                    LOG.debug("Authorizator prohibit Client {} to be notified on {}", sub.getClientId(), topic);
+                    LOG.debug("PermitAllAuthorizator prohibit Client {} to be notified on {}", sub.getClientId(), topic);
                     return;
                 }
 
