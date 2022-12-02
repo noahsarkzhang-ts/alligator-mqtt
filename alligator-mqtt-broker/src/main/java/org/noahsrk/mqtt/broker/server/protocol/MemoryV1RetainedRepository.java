@@ -15,19 +15,19 @@ import java.util.concurrent.ConcurrentMap;
  * @author zhangxt
  * @date 2022/11/14 18:02
  **/
-public class MemoryRetainedRepository implements RetainedRepository {
+public class MemoryV1RetainedRepository implements RetainedRepository {
 
-    private final ConcurrentMap<Topic, RetainedMessage> pool = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Topic, RetainedMessageV1> pool = new ConcurrentHashMap<>();
 
     private static final class Holder {
-        private static final MemoryRetainedRepository INSTANCE = new MemoryRetainedRepository();
+        private static final MemoryV1RetainedRepository INSTANCE = new MemoryV1RetainedRepository();
     }
 
-    private MemoryRetainedRepository() {
+    private MemoryV1RetainedRepository() {
 
     }
 
-    public static MemoryRetainedRepository getInstance() {
+    public static MemoryV1RetainedRepository getInstance() {
         return Holder.INSTANCE;
     }
 
@@ -41,7 +41,7 @@ public class MemoryRetainedRepository implements RetainedRepository {
         final ByteBuf payload = msg.content();
         byte[] rawPayload = new byte[payload.readableBytes()];
         payload.getBytes(0, rawPayload);
-        RetainedMessage toStore = new RetainedMessage(msg.fixedHeader().qosLevel(), rawPayload);
+        RetainedMessageV1 toStore = new RetainedMessageV1(msg.fixedHeader().qosLevel(), rawPayload);
 
         pool.put(topic, toStore);
     }
@@ -52,14 +52,14 @@ public class MemoryRetainedRepository implements RetainedRepository {
     }
 
     @Override
-    public List<RetainedMessage> retainedOnTopic(String topic) {
-        List<RetainedMessage> list = new ArrayList<>();
+    public List<RetainedMessageV1> retainedOnTopic(String topic) {
+        List<RetainedMessageV1> list = new ArrayList<>();
 
-        RetainedMessage msg = pool.get(new Topic(topic));
+        /*RetainedMessageV1 msg = pool.get(new Topic(topic));
 
         if (msg != null) {
             list.add(msg);
-        }
+        }*/
 
         return list;
     }

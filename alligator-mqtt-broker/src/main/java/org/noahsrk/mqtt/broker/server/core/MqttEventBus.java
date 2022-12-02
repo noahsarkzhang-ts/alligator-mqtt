@@ -1,6 +1,8 @@
 package org.noahsrk.mqtt.broker.server.core;
 
-import org.noahsrk.mqtt.broker.server.core.bean.MqttPublishInnerMessage;
+import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Mqtt消息传输类
@@ -10,5 +12,9 @@ import org.noahsrk.mqtt.broker.server.core.bean.MqttPublishInnerMessage;
  **/
 public interface MqttEventBus {
 
-    void broadcast(MqttPublishInnerMessage msg);
+    void broadcast(PublishInnerMessage msg);
+
+    PublishInnerMessage poll(long timeout, TimeUnit unit) throws InterruptedException;
+
+    void publish2Subscribers(PublishInnerMessage message);
 }

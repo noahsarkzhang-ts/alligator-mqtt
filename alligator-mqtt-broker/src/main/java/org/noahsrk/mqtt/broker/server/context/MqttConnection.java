@@ -1,6 +1,7 @@
 package org.noahsrk.mqtt.broker.server.context;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.mqtt.MqttConnAckMessage;
@@ -21,6 +22,7 @@ import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
 import org.noahsrk.mqtt.broker.server.common.DebugUtils;
 import org.noahsrk.mqtt.broker.server.common.NettyUtils;
+import org.noahsrk.mqtt.broker.server.core.DefaultMqttEngine;
 import org.noahsrk.mqtt.broker.server.handler.InflightResenderHandler;
 import org.noahsrk.mqtt.broker.server.protocol.PostOffice;
 import org.noahsrk.mqtt.broker.server.subscription.Topic;
@@ -150,8 +152,9 @@ public class MqttConnection {
         LOG.trace("Client <{}> unsubscribed from topics <{}>", clientID, topics);
     }
 
-    public void sendPublishNotRetainedQos0(Topic topic, MqttQoS qos, ByteBuf payload) {
-        MqttPublishMessage publishMsg = notRetainedPublish(topic.toString(), qos, payload);
+    public void sendPublishNotRetainedQos0(Topic topic, MqttQoS qos, byte[] payload) {
+        ByteBuf messagePayload = Unpooled.wrappedBuffer(payload);
+        MqttPublishMessage publishMsg = notRetainedPublish(topic.toString(), qos, messagePayload);
         sendPublish(publishMsg);
     }
 
@@ -231,7 +234,7 @@ public class MqttConnection {
         LOG.info("Notifying connection lost event. CId: {}, channel: {}", clientID, channel);
         MqttSession session = sessionManager.retrieve(clientID);
         if (session.hasWill()) {
-            PostOffice.getInstance().fireWill(session.getWill());
+            DefaultMqttEngine.getInstance().fireWill(session.getWill());
         }
         if (session.isClean()) {
             sessionManager.remove(clientID);
@@ -282,14 +285,16 @@ public class MqttConnection {
     public static class ConnectionAttr {
         public static final String ATTR_CONNECTION = "connection";
         public static final String ATTR_USERNAME = "username";
-        public static final String ATTR_CLIENTID = "ClientID";
-        public static final String CLEAN_SESSION = "removeTemporaryQoS2";
-        public static final String KEEP_ALIVE = "keepAlive";
+        public static final String ATTR_CLIENTID = "client_id";
+        public static final String CLEAN_SESSION = "remove_temporary_qos2";
+        public static final String KEEP_ALIVE = "keep_alive";
+        public static final String SESSION_ID = "session_id";
 
         public static final AttributeKey<Object> ATTR_KEY_KEEPALIVE = AttributeKey.valueOf(KEEP_ALIVE);
         public static final AttributeKey<Object> ATTR_KEY_CLEANSESSION = AttributeKey.valueOf(CLEAN_SESSION);
         public static final AttributeKey<Object> ATTR_KEY_CLIENTID = AttributeKey.valueOf(ATTR_CLIENTID);
         public static final AttributeKey<Object> ATTR_KEY_USERNAME = AttributeKey.valueOf(ATTR_USERNAME);
         public static final AttributeKey<Object> ATTR_KEY_CONNECTION = AttributeKey.valueOf(ATTR_CONNECTION);
+        public static final AttributeKey<Object> ATTR_SESSION_ID = AttributeKey.valueOf(SESSION_ID);
     }
 }

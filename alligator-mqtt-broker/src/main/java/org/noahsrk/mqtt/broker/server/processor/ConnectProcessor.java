@@ -24,9 +24,9 @@ import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.CONNECTION_REFUS
  * @author zhangxt
  * @date 2022/11/01 17:54
  **/
-public class ConnectMessageProcessor implements MessageProcessor {
+public class ConnectProcessor implements MessageProcessor {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ConnectMessageProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ConnectProcessor.class);
 
     private Authenticator authenticator = new AcceptAllAuthenticator();
 
@@ -39,19 +39,22 @@ public class ConnectMessageProcessor implements MessageProcessor {
         MqttConnection connection = context.getConnection();
 
         try {
+
             MqttConnectPayload payload = message.payload();
             String clientId = payload.clientIdentifier();
+            String userName = payload.userName();
+            byte[] pwd = payload.passwordInBytes();
 
             LOG.info("Receive connect message. clientId={}", clientId);
 
             // 1. 校验，包括版本
-            validate(connection, message);
+            validate(connection, message, clientId);
 
             // 2. 登陆
-            login(connection, message);
+            login(connection, clientId, userName, pwd);
 
             // 3. 创建会话
-            bindSession(connection, message, clientId);
+            bindSession(connection, message, clientId, userName);
 
             // 4. 处理缓存消息
             postMessageHandle(connection, message, clientId);
@@ -66,10 +69,7 @@ public class ConnectMessageProcessor implements MessageProcessor {
 
     }
 
-    private void validate(MqttConnection connection, MqttConnectMessage msg) {
-
-        MqttConnectPayload payload = msg.payload();
-        String clientId = payload.clientIdentifier();
+    private void validate(MqttConnection connection, MqttConnectMessage msg, String clientId) {
 
         if (connection.isNotProtocolVersion(msg, MqttVersion.MQTT_3_1) && connection.isNotProtocolVersion(msg, MqttVersion.MQTT_3_1_1)) {
             LOG.warn("MQTT protocol version is not valid. CId={} channel: {}", clientId, connection.getChannel());
@@ -80,12 +80,7 @@ public class ConnectMessageProcessor implements MessageProcessor {
 
     }
 
-    private void login(MqttConnection conn, MqttConnectMessage msg) {
-
-        MqttConnectPayload payload = msg.payload();
-        String clientId = payload.clientIdentifier();
-        String userName = msg.payload().userName();
-        byte[] pwd = msg.payload().passwordInBytes();
+    private void login(MqttConnection conn, String clientId, String userName, byte[] pwd) {
 
         if (!authenticator.checkValid(clientId, userName, pwd)) {
             LOG.error("Authenticator has rejected the MQTT credentials CId={}, username={}", clientId, userName);
@@ -97,9 +92,10 @@ public class ConnectMessageProcessor implements MessageProcessor {
         NettyUtils.userName(conn.getChannel(), userName);
     }
 
-    private void bindSession(MqttConnection conn, MqttConnectMessage msg, String clientId) {
+    private void bindSession(MqttConnection conn, MqttConnectMessage msg, String clientId, String userName) {
         // TODO
-        sessionManager.bindToSession(conn, msg, clientId);
+        sessionManager.bindToSession(conn, msg, clientId, userName);
+        NettyUtils.sessionId(conn.getChannel(), clientId);
     }
 
     private void postMessageHandle(MqttConnection connection, MqttConnectMessage msg, String clientId) {

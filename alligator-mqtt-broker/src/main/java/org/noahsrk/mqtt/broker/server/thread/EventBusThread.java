@@ -1,14 +1,12 @@
 package org.noahsrk.mqtt.broker.server.thread;
 
-import org.noahsrk.mqtt.broker.server.protocol.EventBus;
-import org.noahsrk.mqtt.broker.server.protocol.MemoryEventBus;
-import org.noahsrk.mqtt.broker.server.protocol.PublishedMessage;
+import org.noahsrk.mqtt.broker.server.core.MemoryMqttEventBus;
+import org.noahsrk.mqtt.broker.server.core.MqttEventBus;
+import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,13 +24,13 @@ public class EventBusThread extends ServiceThread {
      */
     private static final int TIMEOUT_MS = 60 * 1000;
 
-    private EventBus eventBus = MemoryEventBus.getInstance();
+    private MqttEventBus eventBus = MemoryMqttEventBus.getInstance();
 
     @Override
     public void run() {
         log.info("Event Bus Thread start in {}", LocalDateTime.now());
 
-        PublishedMessage message;
+        PublishInnerMessage message;
 
         while (!this.isStopped()) {
             try {

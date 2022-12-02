@@ -8,11 +8,11 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageType;
-import org.noahsrk.mqtt.broker.server.context.MqttConnection;
-import org.noahsrk.mqtt.broker.server.processor.MessageProcessor;
 import org.noahsrk.mqtt.broker.server.common.NettyUtils;
-import org.noahsrk.mqtt.broker.server.dispatcher.Dispatcher;
 import org.noahsrk.mqtt.broker.server.context.Context;
+import org.noahsrk.mqtt.broker.server.context.MqttConnection;
+import org.noahsrk.mqtt.broker.server.dispatcher.Dispatcher;
+import org.noahsrk.mqtt.broker.server.processor.MessageProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +65,7 @@ public class MqttEntryHandler extends ChannelInboundHandlerAdapter {
             throw new IOException("Unknown packet");
         }
         final MqttConnection mqttConnection = mqttConnection(ctx.channel());
+
         try {
             // TODO 处理数据
             MqttMessageType messageType = msg.fixedHeader().messageType();

@@ -6,6 +6,9 @@ import org.noahsrk.mqtt.broker.server.context.Context;
 import org.noahsrk.mqtt.broker.server.context.MqttConnection;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.context.SessionManager;
+import org.noahsrk.mqtt.broker.server.core.DefaultMqttEngine;
+import org.noahsrk.mqtt.broker.server.core.MqttEngine;
+import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +22,8 @@ public class PubRelProcessor implements MessageProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(PubRecProcessor.class);
 
+    private MqttEngine mqttEngine = DefaultMqttEngine.getInstance();
+
     private SessionManager sessionManager = SessionManager.getInstance();
 
     @Override
@@ -29,7 +34,7 @@ public class PubRelProcessor implements MessageProcessor {
         final MqttSession session = sessionManager.retrieve(clientId);
         final int messageID = ((MqttMessageIdVariableHeader) msg.variableHeader()).messageId();
 
-        session.receivedPubRelQos2(messageID);
-        connection.sendPubCompMessage(messageID);
+        PublishInnerMessage message = session.retrieveMsgQos2(messageID);
+        mqttEngine.receivePubrel(session, message);
     }
 }

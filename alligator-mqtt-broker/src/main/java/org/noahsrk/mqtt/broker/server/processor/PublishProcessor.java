@@ -10,6 +10,9 @@ import org.noahsrk.mqtt.broker.server.context.Context;
 import org.noahsrk.mqtt.broker.server.context.MqttConnection;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.context.SessionManager;
+import org.noahsrk.mqtt.broker.server.core.DefaultMqttEngine;
+import org.noahsrk.mqtt.broker.server.core.MqttEngine;
+import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
 import org.noahsrk.mqtt.broker.server.protocol.PostOffice;
 import org.noahsrk.mqtt.broker.server.subscription.Topic;
 import org.slf4j.Logger;
@@ -25,20 +28,21 @@ public class PublishProcessor implements MessageProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(PublishProcessor.class);
 
-    private PostOffice postOffice = PostOffice.getInstance();
+    private MqttEngine mqttEngine = DefaultMqttEngine.getInstance();
 
     private SessionManager sessionManager = SessionManager.getInstance();
 
     @Override
     public void handleMessage(Context context, MqttMessage msg) {
         MqttConnection conn = context.getConnection();
-        Channel channel = conn.getChannel();
-        MqttPublishMessage message = (MqttPublishMessage)msg;
-
-        final MqttQoS qos = message.fixedHeader().qosLevel();
-        final String username = NettyUtils.userName(channel);
-        final String topicName = message.variableHeader().topicName();
         final String clientId = conn.getClientId();
+
+        MqttSession session = sessionManager.retrieve(clientId);
+        final String username = session.getUserName();
+
+        MqttPublishMessage message = (MqttPublishMessage) msg;
+        final MqttQoS qos = message.fixedHeader().qosLevel();
+        final String topicName = message.variableHeader().topicName();
 
         LOG.info("Processing PUBLISH message. CId={}, topic: {}, messageId: {}, qos: {}", clientId, topicName,
                 message.variableHeader().packetId(), qos);
@@ -53,25 +57,45 @@ public class PublishProcessor implements MessageProcessor {
             LOG.debug("Drop connection because of invalid topic format");
             conn.dropConnection();
         }
+
+        PublishInnerMessage publishInnerMessage = convert(message, topic, qos, retain);
+
         switch (qos) {
             case AT_MOST_ONCE:
-                postOffice.receivedPublishQos0(topic, username, clientId, payload, retain, message);
+                mqttEngine.receivedPublishQos0(session, publishInnerMessage);
                 break;
             case AT_LEAST_ONCE: {
                 final int messageID = message.variableHeader().packetId();
-                postOffice.receivedPublishQos1(conn, topic, username, payload, messageID, retain, message);
+                publishInnerMessage.setMessageId(messageID);
+                mqttEngine.receivedPublishQos1(session, publishInnerMessage);
                 break;
             }
             case EXACTLY_ONCE: {
                 final int messageID = message.variableHeader().packetId();
-                final MqttSession session = sessionManager.retrieve(clientId);
-                session.receivedPublishQos2(messageID, message);
-                postOffice.receivedPublishQos2(conn, message, username);
+                publishInnerMessage.setMessageId(messageID);
+                mqttEngine.receivedPublishQos2(session, publishInnerMessage);
                 break;
             }
             default:
                 LOG.error("Unknown QoS-Type:{}", qos);
                 break;
         }
+    }
+
+    private PublishInnerMessage convert(MqttPublishMessage msg, Topic topic, MqttQoS qos, boolean retain) {
+
+        PublishInnerMessage message = new PublishInnerMessage();
+
+        final ByteBuf payload = msg.content();
+        byte[] rawPayload = new byte[payload.readableBytes()];
+        payload.getBytes(0, rawPayload);
+
+        message.setPayload(rawPayload);
+        message.setTopic(topic);
+        message.setQos(qos.value());
+        message.setRetain(retain);
+
+        return message;
+
     }
 }

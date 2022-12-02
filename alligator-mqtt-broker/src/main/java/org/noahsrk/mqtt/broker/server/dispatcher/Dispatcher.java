@@ -1,7 +1,7 @@
 package org.noahsrk.mqtt.broker.server.dispatcher;
 
 import io.netty.handler.codec.mqtt.MqttMessageType;
-import org.noahsrk.mqtt.broker.server.processor.ConnectMessageProcessor;
+import org.noahsrk.mqtt.broker.server.processor.ConnectProcessor;
 import org.noahsrk.mqtt.broker.server.processor.DisconnectProcessor;
 import org.noahsrk.mqtt.broker.server.processor.MessageProcessor;
 import org.noahsrk.mqtt.broker.server.processor.PingReqProcessor;
@@ -27,7 +27,7 @@ public class Dispatcher {
     private static Map<MqttMessageType, MessageProcessor> processors = new HashMap<>();
 
     static {
-        processors.put(MqttMessageType.CONNECT, new ConnectMessageProcessor());
+        processors.put(MqttMessageType.CONNECT, new ConnectProcessor());
         processors.put(MqttMessageType.PINGREQ, new PingReqProcessor());
         processors.put(MqttMessageType.DISCONNECT, new DisconnectProcessor());
         processors.put(MqttMessageType.SUBSCRIBE, new SubscribeProcessor());

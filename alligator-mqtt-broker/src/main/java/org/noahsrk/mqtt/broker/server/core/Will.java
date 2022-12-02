@@ -1,4 +1,4 @@
-package org.noahsrk.mqtt.broker.server.protocol;
+package org.noahsrk.mqtt.broker.server.core;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
@@ -11,11 +11,11 @@ import io.netty.handler.codec.mqtt.MqttQoS;
  **/
 public class Will {
     private String topic;
-    private ByteBuf payload;
-    private MqttQoS qos;
+    private byte [] payload;
+    private int qos;
     private boolean retained;
 
-    public Will(String topic, ByteBuf payload, MqttQoS qos, boolean retained) {
+    public Will(String topic, byte [] payload, int qos, boolean retained) {
         this.topic = topic;
         this.payload = payload;
         this.qos = qos;
@@ -30,19 +30,19 @@ public class Will {
         this.topic = topic;
     }
 
-    public ByteBuf getPayload() {
+    public byte [] getPayload() {
         return payload;
     }
 
-    public void setPayload(ByteBuf payload) {
+    public void setPayload(byte [] payload) {
         this.payload = payload;
     }
 
-    public MqttQoS getQos() {
+    public int getQos() {
         return qos;
     }
 
-    public void setQos(MqttQoS qos) {
+    public void setQos(int qos) {
         this.qos = qos;
     }
 

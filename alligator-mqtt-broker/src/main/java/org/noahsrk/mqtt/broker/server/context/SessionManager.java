@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttConnectMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
-import org.noahsrk.mqtt.broker.server.protocol.Will;
+import org.noahsrk.mqtt.broker.server.core.Will;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,13 +35,13 @@ public class SessionManager {
         return Holder.INSTANCE;
     }
 
-    public void bindToSession(MqttConnection conn, MqttConnectMessage msg, String clientId) {
+    public void bindToSession(MqttConnection conn, MqttConnectMessage msg, String clientId, String userName) {
         boolean clean = msg.variableHeader().isCleanSession();
 
         // case 1 session not existing.
         if (!pool.containsKey(clientId) || clean) {
             // case 1
-            final MqttSession newSession = createNewSession(conn, msg, clientId);
+            final MqttSession newSession = createNewSession(conn, msg, clientId, userName);
 
             // publish the session
             final MqttSession previous = pool.putIfAbsent(clientId, newSession);
@@ -78,14 +78,15 @@ public class SessionManager {
         session.update(clean, will);
     }
 
-    private MqttSession createNewSession(MqttConnection mqttConnection, MqttConnectMessage msg, String clientId) {
+    private MqttSession createNewSession(MqttConnection mqttConnection, MqttConnectMessage msg,
+                                         String clientId, String userName) {
         final boolean clean = msg.variableHeader().isCleanSession();
         final MqttSession newSession;
         if (msg.variableHeader().isWillFlag()) {
             final Will will = createWill(msg);
-            newSession = new MqttSession(clientId,mqttConnection,clean, will);
+            newSession = new MqttSession(clientId, userName, mqttConnection, clean, will);
         } else {
-            newSession = new MqttSession(clientId,mqttConnection,clean, null);
+            newSession = new MqttSession(clientId, userName, mqttConnection, clean, null);
         }
 
         newSession.markConnected();
@@ -94,10 +95,11 @@ public class SessionManager {
     }
 
     private Will createWill(MqttConnectMessage msg) {
-        final ByteBuf willPayload = Unpooled.copiedBuffer(msg.payload().willMessageInBytes());
+        final byte[] willPayload = msg.payload().willMessageInBytes();
+
         final String willTopic = msg.payload().willTopic();
         final boolean retained = msg.variableHeader().isWillRetain();
-        final MqttQoS qos = MqttQoS.valueOf(msg.variableHeader().willQos());
+        final int qos = msg.variableHeader().willQos();
         return new Will(willTopic, willPayload, qos, retained);
     }
 

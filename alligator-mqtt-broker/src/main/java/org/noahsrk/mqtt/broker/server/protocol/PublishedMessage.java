@@ -2,6 +2,7 @@ package org.noahsrk.mqtt.broker.server.protocol;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import org.noahsrk.mqtt.broker.server.core.bean.EnqueuedMessage;
 import org.noahsrk.mqtt.broker.server.subscription.Topic;
 
 /**

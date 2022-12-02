@@ -1,20 +1,11 @@
 package org.noahsrk.mqtt.broker.server.protocol;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.handler.codec.mqtt.MqttFixedHeader;
-import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
-import io.netty.handler.codec.mqtt.MqttQoS;
-import io.netty.handler.codec.mqtt.MqttSubAckMessage;
-import io.netty.handler.codec.mqtt.MqttSubAckPayload;
 import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
-import io.netty.handler.codec.mqtt.MqttTopicSubscription;
-import org.noahsrk.mqtt.broker.server.common.NettyUtils;
-import org.noahsrk.mqtt.broker.server.common.Utils;
 import org.noahsrk.mqtt.broker.server.context.MqttConnection;
-import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.context.SessionManager;
+import org.noahsrk.mqtt.broker.server.core.Will;
 import org.noahsrk.mqtt.broker.server.security.PermitAllAuthorizator;
 import org.noahsrk.mqtt.broker.server.subscription.CTrieSubscriptionDirectory;
 import org.noahsrk.mqtt.broker.server.subscription.SubscriptionsDirectory;
@@ -24,16 +15,11 @@ import org.noahsrk.mqtt.broker.server.subscription.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_LEAST_ONCE;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 import static io.netty.handler.codec.mqtt.MqttQoS.EXACTLY_ONCE;
-import static io.netty.handler.codec.mqtt.MqttQoS.FAILURE;
 
 /**
  * 消息转发器
@@ -66,8 +52,8 @@ public class PostOffice {
         subscriptions = new CTrieSubscriptionDirectory();
         subscriptions.init(new MemorySubscriptionsRepository());
 
-        eventBus = MemoryEventBus.getInstance();
-        retainedRepository = MemoryRetainedRepository.getInstance();
+        eventBus = MemoryEventBusV1.getInstance();
+        retainedRepository = MemoryV1RetainedRepository.getInstance();
 
     }
 
@@ -78,7 +64,7 @@ public class PostOffice {
     public void subscribeClientToTopics(MqttSubscribeMessage msg, String clientID, String username,
                                         MqttConnection mqttConnection) {
         // verify which topics of the subscribe ongoing has read access permission
-        int messageID = Utils.messageId(msg);
+        /*int messageID = Utils.messageId(msg);
         List<MqttTopicSubscription> ackTopics = authorizator.verifyTopicsReadAccess(clientID, username, msg);
         MqttSubAckMessage ackMessage = doAckMessageFromValidateFilters(ackTopics, messageID);
 
@@ -103,20 +89,20 @@ public class PostOffice {
         // send ack message
         mqttConnection.sendSubAckMessage(messageID, ackMessage);
 
-        publishRetainedMessagesForSubscriptions(clientID, newSubscriptions);
+        publishRetainedMessagesForSubscriptions(clientID, newSubscriptions);*/
     }
 
-    private void publishRetainedMessagesForSubscriptions(String clientID, List<Subscription> newSubscriptions) {
+    /*private void publishRetainedMessagesForSubscriptions(String clientID, List<Subscription> newSubscriptions) {
         MqttSession targetSession = this.sessionManager.retrieve(clientID);
         for (Subscription subscription : newSubscriptions) {
             final String topicFilter = subscription.getTopicFilter().toString();
-            final List<RetainedMessage> retainedMsgs = retainedRepository.retainedOnTopic(topicFilter);
+            final List<RetainedMessageV1> retainedMsgs = retainedRepository.retainedOnTopic(topicFilter);
 
             if (retainedMsgs.isEmpty()) {
                 // not found
                 continue;
             }
-            for (RetainedMessage retainedMsg : retainedMsgs) {
+            for (RetainedMessageV1 retainedMsg : retainedMsgs) {
                 final MqttQoS retainedQos = retainedMsg.qosLevel();
                 MqttQoS qos = lowerQosToTheSubscriptionDesired(subscription, retainedQos);
 
@@ -124,19 +110,19 @@ public class PostOffice {
                 targetSession.sendRetainedPublishOnSessionAtQos(subscription.getTopicFilter(), qos, payloadBuf);
             }
         }
-    }
+    }*/
 
-    public MqttQoS lowerQosToTheSubscriptionDesired(Subscription sub, MqttQoS qos) {
+    /*public MqttQoS lowerQosToTheSubscriptionDesired(Subscription sub, MqttQoS qos) {
         if (qos.value() > sub.getRequestedQos().value()) {
             qos = sub.getRequestedQos();
         }
         return qos;
-    }
+    }*/
 
     /**
      * Create the SUBACK response from a list of topicFilters
      */
-    private MqttSubAckMessage doAckMessageFromValidateFilters(List<MqttTopicSubscription> topicFilters, int messageId) {
+   /* private MqttSubAckMessage doAckMessageFromValidateFilters(List<MqttTopicSubscription> topicFilters, int messageId) {
         List<Integer> grantedQoSLevels = new ArrayList<>();
         for (MqttTopicSubscription req : topicFilters) {
             grantedQoSLevels.add(req.qualityOfService().value());
@@ -146,9 +132,9 @@ public class PostOffice {
                 false, 0);
         MqttSubAckPayload payload = new MqttSubAckPayload(grantedQoSLevels);
         return new MqttSubAckMessage(fixedHeader, from(messageId), payload);
-    }
+    }*/
 
-    public void unsubscribe(List<String> topics, MqttConnection mqttConnection, int messageId) {
+    /*public void unsubscribe(List<String> topics, MqttConnection mqttConnection, int messageId) {
         final String clientID = NettyUtils.clientID(mqttConnection.getChannel());
         for (String t : topics) {
             Topic topic = new Topic(t);
@@ -170,7 +156,7 @@ public class PostOffice {
 
         // ack the client
         mqttConnection.sendUnsubAckMessage(topics, clientID, messageId);
-    }
+    }*/
 
     public void receivedPublishQos0(Topic topic, String username, String clientID, ByteBuf payload, boolean retain,
                                     MqttPublishMessage msg) {
@@ -247,13 +233,6 @@ public class PostOffice {
         PublishedMessage publishedMessage = new PublishedMessage(topic, EXACTLY_ONCE, payload);
         eventBus.emit(publishedMessage);
 
-    }
-
-    public void fireWill(Will will) {
-        // MQTT 3.1.2.8-17
-        PublishedMessage publishedMessage = new PublishedMessage(new Topic(will.getTopic()), will.getQos(),
-                will.getPayload());
-        eventBus.emit(publishedMessage);
     }
 
     public Set<Subscription> matchQosSharpening(Topic topic) {

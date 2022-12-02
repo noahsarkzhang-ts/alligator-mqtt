@@ -1,4 +1,4 @@
-package org.noahsrk.mqtt.broker.server.protocol;
+package org.noahsrk.mqtt.broker.server.core.bean;
 
 /**
  * 排队消息

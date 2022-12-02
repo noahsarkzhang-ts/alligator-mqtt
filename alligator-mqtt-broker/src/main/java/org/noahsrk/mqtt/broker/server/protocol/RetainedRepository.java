@@ -28,5 +28,5 @@ public interface RetainedRepository {
 
     boolean isEmpty();
 
-    List<RetainedMessage> retainedOnTopic(String topic);
+    List<RetainedMessageV1> retainedOnTopic(String topic);
 }

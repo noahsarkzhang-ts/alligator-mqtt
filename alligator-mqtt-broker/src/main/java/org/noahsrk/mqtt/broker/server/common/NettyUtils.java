@@ -68,6 +68,14 @@ public final class NettyUtils {
         return (MqttConnection) channel.attr(MqttConnection.ConnectionAttr.ATTR_KEY_CONNECTION).get();
     }
 
+    public static void sessionId(Channel channel,String sessionId) {
+        channel.attr(MqttConnection.ConnectionAttr.ATTR_SESSION_ID).set(sessionId);
+    }
+
+    public static String sessionId(Channel channel) {
+        return (String) channel.attr(MqttConnection.ConnectionAttr.ATTR_SESSION_ID).get();
+    }
+
     private NettyUtils() {
     }
 }

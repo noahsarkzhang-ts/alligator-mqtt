@@ -215,4 +215,7 @@ public class Topic implements Serializable {
         return topic.hashCode();
     }
 
+    public String getRawTopic() {
+        return topic;
+    }
 }

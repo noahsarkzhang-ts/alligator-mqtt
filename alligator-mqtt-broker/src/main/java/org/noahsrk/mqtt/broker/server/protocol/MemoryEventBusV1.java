@@ -21,19 +21,19 @@ import java.util.concurrent.TimeUnit;
  * @author zhangxt
  * @date 2022/11/11 15:48
  **/
-public class MemoryEventBus implements EventBus {
+public class MemoryEventBusV1 implements EventBus {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MemoryEventBus.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MemoryEventBusV1.class);
 
     private BlockingQueue<PublishedMessage> messages;
     private PermitAllAuthorizator authorizator;
     private SessionManager sessionManager;
 
     private static final class Holder {
-        private static final MemoryEventBus INSTANCE = new MemoryEventBus();
+        private static final MemoryEventBusV1 INSTANCE = new MemoryEventBusV1();
     }
 
-    private MemoryEventBus() {
+    private MemoryEventBusV1() {
         messages = new LinkedBlockingQueue<>();
 
         authorizator = PermitAllAuthorizator.getInstance();
@@ -41,7 +41,7 @@ public class MemoryEventBus implements EventBus {
 
     }
 
-    public static MemoryEventBus getInstance() {
+    public static MemoryEventBusV1 getInstance() {
         return Holder.INSTANCE;
     }
 
@@ -70,7 +70,7 @@ public class MemoryEventBus implements EventBus {
         Set<Subscription> topicMatchingSubscriptions = PostOffice.getInstance().matchQosSharpening(topic);
         LOG.info("Matched Subscription size: {}", topicMatchingSubscriptions.size());
 
-        for (final Subscription sub : topicMatchingSubscriptions) {
+        /*for (final Subscription sub : topicMatchingSubscriptions) {
 
             LOG.info("Matched Subscription: {}, publishingQos: {}", sub.toString(), publishingQos);
 
@@ -96,7 +96,7 @@ public class MemoryEventBus implements EventBus {
                 LOG.debug("PUBLISH to not yet present session. CId: {}, topicFilter: {}, qos: {}", sub.getClientId(),
                         sub.getTopicFilter(), qos);
             }
-        }
+        }*/
     }
 
 }
