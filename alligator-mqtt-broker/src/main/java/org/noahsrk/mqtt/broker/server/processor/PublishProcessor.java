@@ -1,11 +1,10 @@
 package org.noahsrk.mqtt.broker.server.processor;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
-import org.noahsrk.mqtt.broker.server.common.NettyUtils;
+import io.netty.util.ReferenceCountUtil;
 import org.noahsrk.mqtt.broker.server.context.Context;
 import org.noahsrk.mqtt.broker.server.context.MqttConnection;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
@@ -13,7 +12,6 @@ import org.noahsrk.mqtt.broker.server.context.SessionManager;
 import org.noahsrk.mqtt.broker.server.core.DefaultMqttEngine;
 import org.noahsrk.mqtt.broker.server.core.MqttEngine;
 import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
-import org.noahsrk.mqtt.broker.server.protocol.PostOffice;
 import org.noahsrk.mqtt.broker.server.subscription.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,51 +32,55 @@ public class PublishProcessor implements MessageProcessor {
 
     @Override
     public void handleMessage(Context context, MqttMessage msg) {
-        MqttConnection conn = context.getConnection();
-        final String clientId = conn.getClientId();
-
-        MqttSession session = sessionManager.retrieve(clientId);
-        final String username = session.getUserName();
 
         MqttPublishMessage message = (MqttPublishMessage) msg;
-        final MqttQoS qos = message.fixedHeader().qosLevel();
-        final String topicName = message.variableHeader().topicName();
+        MqttConnection conn = context.getConnection();
 
-        LOG.info("Processing PUBLISH message. CId={}, topic: {}, messageId: {}, qos: {}", clientId, topicName,
-                message.variableHeader().packetId(), qos);
+        try {
 
-        // 重发功能待补充 TODO
-        final boolean dup = message.fixedHeader().isDup();
+            final String clientId = conn.getClientId();
+            MqttSession session = sessionManager.retrieve(clientId);
 
-        ByteBuf payload = message.payload();
-        final boolean retain = message.fixedHeader().isRetain();
-        final Topic topic = new Topic(topicName);
-        if (!topic.isValid()) {
-            LOG.debug("Drop connection because of invalid topic format");
-            conn.dropConnection();
-        }
+            final MqttQoS qos = message.fixedHeader().qosLevel();
+            final String topicName = message.variableHeader().topicName();
 
-        PublishInnerMessage publishInnerMessage = convert(message, topic, qos, retain);
+            LOG.info("Processing PUBLISH message. CId={}, topic: {}, messageId: {}, qos: {}", clientId, topicName,
+                    message.variableHeader().packetId(), qos);
 
-        switch (qos) {
-            case AT_MOST_ONCE:
-                mqttEngine.receivedPublishQos0(session, publishInnerMessage);
-                break;
-            case AT_LEAST_ONCE: {
-                final int messageID = message.variableHeader().packetId();
-                publishInnerMessage.setMessageId(messageID);
-                mqttEngine.receivedPublishQos1(session, publishInnerMessage);
-                break;
+            // 重发功能待补充 TODO
+            final boolean dup = message.fixedHeader().isDup();
+
+            final boolean retain = message.fixedHeader().isRetain();
+            final Topic topic = new Topic(topicName);
+            if (!topic.isValid()) {
+                LOG.debug("Drop connection because of invalid topic format");
+                conn.dropConnection();
             }
-            case EXACTLY_ONCE: {
-                final int messageID = message.variableHeader().packetId();
-                publishInnerMessage.setMessageId(messageID);
-                mqttEngine.receivedPublishQos2(session, publishInnerMessage);
-                break;
+
+            PublishInnerMessage publishInnerMessage = convert(message, topic, qos, retain);
+
+            switch (qos) {
+                case AT_MOST_ONCE:
+                    mqttEngine.receivedPublishQos0(session, publishInnerMessage);
+                    break;
+                case AT_LEAST_ONCE: {
+                    final int messageID = message.variableHeader().packetId();
+                    publishInnerMessage.setMessageId(messageID);
+                    mqttEngine.receivedPublishQos1(session, publishInnerMessage);
+                    break;
+                }
+                case EXACTLY_ONCE: {
+                    final int messageID = message.variableHeader().packetId();
+                    publishInnerMessage.setMessageId(messageID);
+                    mqttEngine.receivedPublishQos2(session, publishInnerMessage);
+                    break;
+                }
+                default:
+                    LOG.error("Unknown QoS-Type:{}", qos);
+                    break;
             }
-            default:
-                LOG.error("Unknown QoS-Type:{}", qos);
-                break;
+        } finally {
+            ReferenceCountUtil.release(message);
         }
     }
 

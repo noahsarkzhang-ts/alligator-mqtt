@@ -2,6 +2,7 @@ package org.noahsrk.mqtt.broker.server.processor;
 
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
+import io.netty.util.ReferenceCountUtil;
 import org.noahsrk.mqtt.broker.server.context.Context;
 import org.noahsrk.mqtt.broker.server.context.MqttConnection;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
@@ -28,13 +29,17 @@ public class PubRelProcessor implements MessageProcessor {
 
     @Override
     public void handleMessage(Context context, MqttMessage msg) {
-        MqttConnection connection = context.getConnection();
 
-        String clientId = connection.getClientId();
-        final MqttSession session = sessionManager.retrieve(clientId);
-        final int messageID = ((MqttMessageIdVariableHeader) msg.variableHeader()).messageId();
+        try {
+            MqttConnection connection = context.getConnection();
+            String clientId = connection.getClientId();
+            final MqttSession session = sessionManager.retrieve(clientId);
+            final int messageID = ((MqttMessageIdVariableHeader) msg.variableHeader()).messageId();
 
-        PublishInnerMessage message = session.retrieveMsgQos2(messageID);
-        mqttEngine.receivePubrel(session, message);
+            PublishInnerMessage message = session.retrieveMsgQos2(messageID);
+            mqttEngine.receivePubrel(session, message);
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
     }
 }

@@ -57,7 +57,7 @@ public class MqttSession {
     // 客户端连接对象
     private MqttConnection connection;
 
-    // 存放发送的 QOS2 的 PublishMessage 及 PubRel 数据
+    // 存放发送的 QOS1&2 的 PublishMessage 及 PubRel 数据
     private final Map<Integer, EnqueuedMessage> inflightWindow = new HashMap<>();
     // 按照发送的时间对数据包进行排序
     private final DelayQueue<InFlightPacket> inflightTimeouts = new DelayQueue<>();
@@ -135,31 +135,19 @@ public class MqttSession {
             return;
         }
 
-        if (canSkipQueue()) {
-            inflightSlots.decrementAndGet();
-            int packetId = connection.nextPacketId();
-            inflightWindow.put(packetId, new PublishInnerMessage(topic,false, qos.value(), payload));
-            inflightTimeouts.add(new InFlightPacket(packetId, FLIGHT_BEFORE_RESEND_MS));
-
-            ByteBuf messagePayload = Unpooled.wrappedBuffer(payload);
-            MqttPublishMessage publishMsg = connection.notRetainedPublishWithMessageId(topic.toString(), qos,
-                    messagePayload, packetId);
-            connection.sendPublish(publishMsg);
-
-            // TODO drainQueueToConnection();?
-        } else {
-
-            // TODO
-            // 存入本地队列
-        }
+        sendPublishMoreThan1(topic, qos,payload);
     }
 
     private void sendPublishQos2(Topic topic, MqttQoS qos, byte[] payload) {
+        sendPublishMoreThan1(topic, qos,payload);
+    }
+
+    private void sendPublishMoreThan1(Topic topic, MqttQoS qos, byte[] payload) {
         // TODO
         if (canSkipQueue()) {
             inflightSlots.decrementAndGet();
             int packetId = connection.nextPacketId();
-            inflightWindow.put(packetId, new PublishInnerMessage(topic,false, qos.value(), payload));
+            inflightWindow.put(packetId, new PublishInnerMessage(topic, false, qos.value(), payload));
             inflightTimeouts.add(new InFlightPacket(packetId, FLIGHT_BEFORE_RESEND_MS));
 
             ByteBuf messagePayload = Unpooled.wrappedBuffer(payload);
@@ -174,7 +162,7 @@ public class MqttSession {
         }
     }
 
-    public void receivedPublishQos2( PublishInnerMessage msg) {
+    public void receivedPublishQos2(PublishInnerMessage msg) {
         qos2Receiving.put(msg.getMessageId(), msg);
         connection.sendPublishReceived(msg.getMessageId());
     }

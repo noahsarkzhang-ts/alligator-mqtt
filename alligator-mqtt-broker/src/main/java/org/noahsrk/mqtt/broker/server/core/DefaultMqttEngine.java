@@ -3,9 +3,7 @@ package org.noahsrk.mqtt.broker.server.core;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
-import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageType;
-import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.codec.mqtt.MqttSubAckMessage;
 import io.netty.handler.codec.mqtt.MqttSubAckPayload;
@@ -23,7 +21,6 @@ import org.noahsrk.mqtt.broker.server.core.repository.MessageRepository;
 import org.noahsrk.mqtt.broker.server.core.repository.MysqlMessageRepository;
 import org.noahsrk.mqtt.broker.server.core.repository.RetainedRepository;
 import org.noahsrk.mqtt.broker.server.core.repository.SubscriptionsRepository;
-import org.noahsrk.mqtt.broker.server.protocol.PublishedMessage;
 import org.noahsrk.mqtt.broker.server.security.Authorizator;
 import org.noahsrk.mqtt.broker.server.security.PermitAllAuthorizator;
 import org.noahsrk.mqtt.broker.server.subscription.CTrieSubscriptionDirectory;
@@ -91,74 +88,71 @@ public class DefaultMqttEngine implements MqttEngine {
     @Override
     public void receivedPublishQos0(MqttSession session, PublishInnerMessage msg) {
 
-        // 判断有效性
-        Topic topic = msg.getTopic();
+        // 1. 验证 topic
+        if (!validateTopic(session, msg)) {
+            LOG.info("Topic is invalid!");
 
-        if (!authorizator.canWrite(topic, session.getUserName(), session.getClientId())) {
-            LOG.error("MQTT client: {} is not authorized to publish on topic: {}", session.getClientId(), topic);
             return;
         }
 
+        Topic topic = msg.getTopic();
         if (msg.isRetain()) {
             // QoS == 0 && retain => clean old retained
             retainedRepository.cleanRetained(topic);
         }
 
-        // 1, QOS0 无需持久化，广播消息即可。
+        // 2, QOS0 无需持久化，广播消息即可。
         // MqttPublishMessage --> PublishInnerMessage
         eventBus.broadcast(msg);
     }
 
     @Override
     public void receivedPublishQos1(MqttSession session, PublishInnerMessage msg) {
-        // 判断有效性
-        Topic topic = msg.getTopic();
+        // 1. 验证 topic
+        if (!validateTopic(session, msg)) {
+            LOG.info("Topic is invalid!");
 
-        // verify if topic can be write
-        topic.getTokens();
-        if (!topic.isValid()) {
-            LOG.warn("Invalid topic format, force close the connection");
-            session.getConnection().dropConnection();
             return;
         }
 
-        final String clientId = session.getClientId();
-        if (!authorizator.canWrite(topic, session.getUserName(), clientId)) {
-            LOG.error("MQTT client: {} is not authorized to publish on topic: {}", clientId, topic);
-            return;
-        }
-
-        // 1, QOS1 持久化
+        // 2, QOS1 持久化
         // MqttPublishMessage --> StoredMessage
-        StoredMessage storedMessage = new StoredMessage();
-        storedMessage.setQos(msg.getQos());
-        storedMessage.setTopic(topic.getRawTopic());
-        storedMessage.setPayload(msg.getPayload());
+        StoredMessage storedMessage = convertStoredMessage(msg);
         messageRepository.store(storedMessage);
 
         // 2. 广播消息
         // MqttPublishMessage --> PublishInnerMessage
-        PublishInnerMessage message = new PublishInnerMessage();
-        eventBus.broadcast(message);
+        eventBus.broadcast(msg);
 
         // 3. 发送 ACK
-        session.getConnection().sendPubAck(message.getMessageId());
+        session.getConnection().sendPubAck(msg.getMessageId());
 
-        // 1. case 1: retain = 1 且 payload 为 null, 清除 retain 消息
-        // 2. case2: retain = 1 且 payload 不为 null，则更新 retain 消息，每一个 topic，retain 消息只保留最新的一条。
-        if (msg.isRetain()) {
-            if (msg.getPayload() == null || msg.getPayload().length == 0) {
-                retainedRepository.cleanRetained(topic);
-            } else {
-                // before wasn't stored
-                retainedRepository.retain(topic, new RetainedMessage(msg.getQos(),msg.getPayload()));
-            }
-        }
+        // 4. 处理 retain 数据
+        processDataRetain(msg);
 
     }
 
     @Override
     public void receivedPublishQos2(MqttSession session, PublishInnerMessage msg) {
+
+        // 1. 验证 topic
+        if (!validateTopic(session, msg)) {
+            LOG.info("Topic is invalid!");
+            return;
+        }
+
+        // 2. 存入 Session 会话中,发送 PUBREC 消息
+        session.receivedPublishQos2(msg);
+    }
+
+    /**
+     * 判断 topic 的有效性
+     *
+     * @param session 会话
+     * @param msg     消息
+     * @return 是否合法
+     */
+    private boolean validateTopic(MqttSession session, PublishInnerMessage msg) {
         // 判断有效性
         Topic topic = msg.getTopic();
 
@@ -167,42 +161,70 @@ public class DefaultMqttEngine implements MqttEngine {
         if (!topic.isValid()) {
             LOG.warn("Invalid topic format, force close the connection");
             session.getConnection().dropConnection();
-            return;
+
+            return false;
         }
 
         final String clientId = session.getClientId();
         if (!authorizator.canWrite(topic, session.getUserName(), clientId)) {
             LOG.error("MQTT client: {} is not authorized to publish on topic: {}", clientId, topic);
-            return;
+            return false;
         }
 
-        // 1. 存入 Session 会话中,发送 PUBREC 消息
-        session.receivedPublishQos2(msg);
+        return true;
+    }
 
+    /**
+     *  处理 Retain 数据
+     * @param msg PublishInnerMessage
+     */
+    private void processDataRetain(PublishInnerMessage msg) {
+        // 1. case 1: retain = 1 且 payload 为 null, 清除 retain 消息
+        // 2. case2: retain = 1 且 payload 不为 null，则更新 retain 消息，每一个 topic，retain 消息只保留最新的一条。
+        Topic topic = msg.getTopic();
+        if (msg.isRetain()) {
+            if (msg.getPayload() == null || msg.getPayload().length == 0) {
+                retainedRepository.cleanRetained(topic);
+            } else {
+                // before wasn't stored
+                retainedRepository.retain(topic, new RetainedMessage(msg.getQos(), msg.getPayload()));
+            }
+        }
     }
 
     @Override
     public void receivePubrel(MqttSession session, PublishInnerMessage msg) {
         // 1, QOS1 持久化
         // MqttPublishMessage --> StoredMessage
-        Topic topic = msg.getTopic();
-        StoredMessage storedMessage = new StoredMessage();
-        storedMessage.setQos(msg.getQos());
-        storedMessage.setTopic(topic.getRawTopic());
-        storedMessage.setPayload(msg.getPayload());
+        StoredMessage storedMessage = convertStoredMessage(msg);
         messageRepository.store(storedMessage);
 
         // 2. 删除session中的消息
-        // session.remove(messageId)
         session.receivedPubRelQos2(msg.getMessageId());
 
         // 3. 广播消息
-        // MqttPublishMessage --> PublishInnerMessage
         eventBus.broadcast(msg);
 
         // 3. 发送 PUBCOMP 消息
-        // session.sendAck();
         session.getConnection().sendPubCompMessage(msg.getMessageId());
+
+        // 4. 处理 retain 数据
+        processDataRetain(msg);
+    }
+
+    /**
+     *  将 PublishInnerMessage 转化为 StoredMessage
+     * @param msg PublishInnerMessage
+     * @return StoredMessage
+     */
+    private StoredMessage convertStoredMessage(PublishInnerMessage msg) {
+
+        StoredMessage storedMessage = new StoredMessage();
+        storedMessage.setQos(msg.getQos());
+        storedMessage.setTopic(msg.getTopic().getRawTopic());
+        storedMessage.setPayload(msg.getPayload());
+
+        return storedMessage;
     }
 
 
@@ -239,7 +261,6 @@ public class DefaultMqttEngine implements MqttEngine {
 
         // 1.3 发送 Retained 数据
         publishRetainedMessagesForSubscriptions(session, newSubscriptions);
-
 
         // 2. 广播服务器与topic的订阅关系(增量新增)
         // TODO
@@ -330,8 +351,8 @@ public class DefaultMqttEngine implements MqttEngine {
     public void fireWill(Will will) {
         // MQTT 3.1.2.8-17
 
-        PublishInnerMessage publishInnerMessage = new PublishInnerMessage(new Topic(will.getTopic()),will.isRetained(),
-                will.getQos(),will.getPayload());
+        PublishInnerMessage publishInnerMessage = new PublishInnerMessage(new Topic(will.getTopic()), will.isRetained(),
+                will.getQos(), will.getPayload());
 
         eventBus.broadcast(publishInnerMessage);
     }

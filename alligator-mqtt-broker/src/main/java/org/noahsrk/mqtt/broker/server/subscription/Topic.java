@@ -65,9 +65,9 @@ public class Topic implements Serializable {
             try {
                 tokens = parseTopic(topic);
                 valid = true;
-            } catch (ParseException e) {
+            } catch (ParseException ex) {
                 valid = false;
-                LOG.error("Error parsing the topic: {}, message: {}", topic, e.getMessage());
+                LOG.error("Error parsing the topic: {}, message: {}", topic, ex.getMessage());
             }
         }
 
@@ -76,8 +76,8 @@ public class Topic implements Serializable {
 
     private List<Token> parseTopic(String topic) throws ParseException {
         if (topic.length() == 0) {
-            throw new ParseException("Bad format of topic, topic MUST be at least 1 character [MQTT-4.7.3-1] and " +
-                                     "this was empty", 0);
+            throw new ParseException("Bad format of topic, topic MUST be at least 1 character [MQTT-4.7.3-1] and "
+                    + "this was empty", 0);
         }
         List<Token> res = new ArrayList<>();
         String[] splitted = topic.split("/");
@@ -152,8 +152,9 @@ public class Topic implements Serializable {
     }
 
     public boolean isValid() {
-        if (tokens == null)
+        if (tokens == null) {
             getTokens();
+        }
 
         return valid;
     }

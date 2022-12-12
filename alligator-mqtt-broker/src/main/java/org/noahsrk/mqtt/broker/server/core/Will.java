@@ -1,8 +1,5 @@
 package org.noahsrk.mqtt.broker.server.core;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.mqtt.MqttQoS;
-
 /**
  * 遗嘱信息
  *

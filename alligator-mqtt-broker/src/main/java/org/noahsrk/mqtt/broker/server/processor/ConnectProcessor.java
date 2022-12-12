@@ -64,7 +64,7 @@ public class ConnectProcessor implements MessageProcessor {
         } catch (ConnectException ex) {
             connection.abortConnection(ex.getCode());
         } finally {
-            ReferenceCountUtil.release(msg);
+            ReferenceCountUtil.release(message);
         }
 
     }

@@ -24,7 +24,6 @@ import org.noahsrk.mqtt.broker.server.common.DebugUtils;
 import org.noahsrk.mqtt.broker.server.common.NettyUtils;
 import org.noahsrk.mqtt.broker.server.core.DefaultMqttEngine;
 import org.noahsrk.mqtt.broker.server.handler.InflightResenderHandler;
-import org.noahsrk.mqtt.broker.server.protocol.PostOffice;
 import org.noahsrk.mqtt.broker.server.subscription.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

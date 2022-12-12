@@ -2,6 +2,7 @@ package org.noahsrk.mqtt.broker.server.processor;
 
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
+import io.netty.util.ReferenceCountUtil;
 import org.noahsrk.mqtt.broker.server.context.Context;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.context.SessionManager;
@@ -22,11 +23,15 @@ public class PubRecProcessor implements MessageProcessor {
 
     @Override
     public void handleMessage(Context context, MqttMessage msg) {
-        final int messageID = ((MqttMessageIdVariableHeader) msg.variableHeader()).messageId();
-        final MqttSession session = sessionManager.retrieve(context.getConnection().getClientId());
+        try {
+            final int messageID = ((MqttMessageIdVariableHeader) msg.variableHeader()).messageId();
+            final MqttSession session = sessionManager.retrieve(context.getConnection().getClientId());
 
-        String clientId = context.getConnection().getClientId();
-        LOG.info("Receive PUBREC message. CId={}, messageId: {}", clientId, messageID);
-        session.processPubRec(messageID);
+            String clientId = context.getConnection().getClientId();
+            LOG.info("Receive PUBREC message. CId={}, messageId: {}", clientId, messageID);
+            session.processPubRec(messageID);
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
     }
 }
