@@ -1,9 +1,6 @@
 package org.noahsrk.mqtt.broker.server.context;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttConnectMessage;
-import io.netty.handler.codec.mqtt.MqttQoS;
 import org.noahsrk.mqtt.broker.server.core.Will;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

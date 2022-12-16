@@ -21,14 +21,11 @@ import java.util.concurrent.TimeUnit;
  * @author zhangxt
  * @date 2022/11/25 14:08
  **/
-public class MemoryMqttEventBus implements MqttEventBus {
+public class MemoryMqttEventBus extends AbstractMqttEventBus {
 
     private static final Logger LOG = LoggerFactory.getLogger(MemoryMqttEventBus.class);
 
     private BlockingQueue<PublishInnerMessage> messages;
-
-    private PermitAllAuthorizator authorizator;
-    private SessionManager sessionManager;
 
     private static final class Holder {
         private static final MqttEventBus INSTANCE = new MemoryMqttEventBus();
@@ -36,9 +33,6 @@ public class MemoryMqttEventBus implements MqttEventBus {
 
     private MemoryMqttEventBus() {
         messages = new LinkedBlockingQueue<>();
-
-        authorizator = PermitAllAuthorizator.getInstance();
-        sessionManager = SessionManager.getInstance();
     }
 
     public static MqttEventBus getInstance() {
@@ -57,46 +51,6 @@ public class MemoryMqttEventBus implements MqttEventBus {
         return messages.poll(timeout, unit);
     }
 
-    @Override
-    public void publish2Subscribers(PublishInnerMessage message) {
-        LOG.info("Push a PublishedMessage:{},{}", message.getTopic(), message.getQos());
-
-        // ByteBuf origPayload = message.getPayload();
-        Topic topic = message.getTopic();
-        MqttQoS publishingQos = MqttQoS.valueOf(message.getQos());
-
-        Set<Subscription> topicMatchingSubscriptions = DefaultMqttEngine.getInstance().matchQosSharpening(topic);
-        LOG.info("Matched Subscription size: {}", topicMatchingSubscriptions.size());
-
-        for (final Subscription sub : topicMatchingSubscriptions) {
-
-            LOG.info("Matched Subscription: {}, publishingQos: {}", sub.toString(), publishingQos);
-
-            MqttQoS qos = DefaultMqttEngine.getInstance().lowerQosToTheSubscriptionDesired(sub, publishingQos);
-            MqttSession targetSession = sessionManager.retrieve(sub.getClientId());
-
-            boolean isSessionPresent = targetSession != null;
-            if (isSessionPresent) {
-                LOG.debug("Sending PUBLISH message to active subscriber CId: {}, topicFilter: {}, qos: {}",
-                        sub.getClientId(), sub.getTopicFilter(), qos);
-                //TODO determine the user bounded to targetSession
-                if (!authorizator.canRead(topic, "TODO", sub.getClientId())) {
-                    LOG.debug("PermitAllAuthorizator prohibit Client {} to be notified on {}", sub.getClientId(), topic);
-                    return;
-                }
-
-                // we need to retain because duplicate only copy r/w indexes and don't retain() causing refCnt = 0
-                //ByteBuf payload = Unpooled.wrappedBuffer(message.getPayload());
-
-                targetSession.sendPublishOnSessionAtQos(topic, qos, message.getPayload());
-            } else {
-                // If we are, the subscriber disconnected after the subscriptions tree selected that session as a
-                // destination.
-                LOG.debug("PUBLISH to not yet present session. CId: {}, topicFilter: {}, qos: {}", sub.getClientId(),
-                        sub.getTopicFilter(), qos);
-            }
-        }
-    }
 
 
 }

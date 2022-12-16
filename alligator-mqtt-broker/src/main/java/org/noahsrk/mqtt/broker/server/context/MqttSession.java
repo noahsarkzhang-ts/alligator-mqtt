@@ -68,7 +68,7 @@ public class MqttSession {
     private final Map<Integer, PublishInnerMessage> qos2Receiving = new HashMap<>();
 
     // 会话状态
-    private final AtomicReference<SessionStatus> status = new AtomicReference<>(SessionStatus.DISCONNECTED);
+    private final AtomicReference<MqttSessionStatus> status = new AtomicReference<>(MqttSessionStatus.DISCONNECTED);
 
     // 会话的订阅关系
     private List<Subscription> subscriptions = new ArrayList<>();
@@ -86,15 +86,15 @@ public class MqttSession {
     }
 
     public void markConnected() {
-        assignState(SessionStatus.DISCONNECTED, SessionStatus.CONNECTED);
+        assignState(MqttSessionStatus.DISCONNECTED, MqttSessionStatus.CONNECTED);
     }
 
-    private boolean assignState(SessionStatus expected, SessionStatus newState) {
+    private boolean assignState(MqttSessionStatus expected, MqttSessionStatus newState) {
         return status.compareAndSet(expected, newState);
     }
 
     public void disconnect() {
-        final boolean res = assignState(SessionStatus.CONNECTED, SessionStatus.DISCONNECTING);
+        final boolean res = assignState(MqttSessionStatus.CONNECTED, MqttSessionStatus.DISCONNECTING);
         if (!res) {
             // someone already moved away from CONNECTED
             // TODO what to do?
@@ -104,7 +104,7 @@ public class MqttSession {
         connection = null;
         will = null;
 
-        assignState(SessionStatus.DISCONNECTING, SessionStatus.DISCONNECTED);
+        assignState(MqttSessionStatus.DISCONNECTING, MqttSessionStatus.DISCONNECTED);
     }
 
     public void addSubscriptions(List<Subscription> newSubscriptions) {
@@ -283,11 +283,11 @@ public class MqttSession {
     }
 
     public boolean disconnected() {
-        return status.get() == SessionStatus.DISCONNECTED;
+        return status.get() == MqttSessionStatus.DISCONNECTED;
     }
 
     public boolean connected() {
-        return status.get() == SessionStatus.CONNECTED;
+        return status.get() == MqttSessionStatus.CONNECTED;
     }
 
     public boolean isClean() {
@@ -343,7 +343,7 @@ public class MqttSession {
         }
     }
 
-    public enum SessionStatus {
+    public enum MqttSessionStatus {
         CONNECTED, DISCONNECTING, DISCONNECTED
     }
 

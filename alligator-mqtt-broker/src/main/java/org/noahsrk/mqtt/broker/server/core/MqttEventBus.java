@@ -14,6 +14,8 @@ public interface MqttEventBus {
 
     void broadcast(PublishInnerMessage msg);
 
+    void receive(PublishInnerMessage msg);
+
     PublishInnerMessage poll(long timeout, TimeUnit unit) throws InterruptedException;
 
     void publish2Subscribers(PublishInnerMessage message);
