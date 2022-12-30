@@ -1,5 +1,6 @@
 package org.noahsrk.mqtt.broker.server.thread;
 
+import org.noahsrk.mqtt.broker.server.clusters.bean.ClusterMessage;
 import org.noahsrk.mqtt.broker.server.core.MemoryMqttEventBus;
 import org.noahsrk.mqtt.broker.server.core.MqttEventBus;
 import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
@@ -30,7 +31,7 @@ public class EventBusThread extends ServiceThread {
     public void run() {
         log.info("Event Bus Thread start in {}", LocalDateTime.now());
 
-        PublishInnerMessage message;
+        ClusterMessage message;
 
         while (!this.isStopped()) {
             try {
@@ -38,7 +39,7 @@ public class EventBusThread extends ServiceThread {
                 message = eventBus.poll(TIMEOUT_MS, TimeUnit.MILLISECONDS);
 
                 if (message != null) {
-                    eventBus.publish2Subscribers(message);
+                    eventBus.publish2Subscribers((PublishInnerMessage) message.getMessage());
                 }
 
             } catch (Exception ex) {

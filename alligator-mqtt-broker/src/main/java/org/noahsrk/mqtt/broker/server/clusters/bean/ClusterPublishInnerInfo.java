@@ -1,18 +1,14 @@
-package org.noahsrk.mqtt.broker.server.core.bean;
-
-import org.noahsrk.mqtt.broker.server.subscription.Topic;
-
-import java.io.Serializable;
+package org.noahsrk.mqtt.broker.server.clusters.bean;
 
 /**
- * Mqtt 消息
+ * 用于集群版通信的Publish消息
  *
  * @author zhangxt
- * @date 2022/11/25 10:50
+ * @date 2022/12/19 11:11
  **/
-public class PublishInnerMessage implements EnqueuedMessage {
+public class ClusterPublishInnerInfo {
 
-    private Topic topic;
+    private String topic;
 
     private boolean retain;
 
@@ -22,21 +18,14 @@ public class PublishInnerMessage implements EnqueuedMessage {
 
     private int messageId;
 
-    public PublishInnerMessage() {
+    public ClusterPublishInnerInfo() {
     }
 
-    public PublishInnerMessage(Topic topic, boolean retain, int qos, byte[] payload) {
-        this.topic = topic;
-        this.retain = retain;
-        this.qos = qos;
-        this.payload = payload;
-    }
-
-    public Topic getTopic() {
+    public String getTopic() {
         return topic;
     }
 
-    public void setTopic(Topic topic) {
+    public void setTopic(String topic) {
         this.topic = topic;
     }
 
@@ -74,8 +63,8 @@ public class PublishInnerMessage implements EnqueuedMessage {
 
     @Override
     public String toString() {
-        return "PublishInnerMessage{" +
-                "topic=" + topic +
+        return "ClusterPublishInnerInfo{" +
+                "topic='" + topic + '\'' +
                 ", retain=" + retain +
                 ", qos=" + qos +
                 ", messageId=" + messageId +

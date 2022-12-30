@@ -62,8 +62,7 @@ public class CTrieSubscriptionDirectory implements SubscriptionsDirectory {
      * contain character # and + because they are reserved to listeners subscriptions, and not topic
      * publishing.
      *
-     * @param topic
-     *            to use fo searching matching subscriptions.
+     * @param topic to use fo searching matching subscriptions.
      * @return the list of matching subscriptions, or empty if not matching.
      */
     @Override
@@ -96,7 +95,7 @@ public class CTrieSubscriptionDirectory implements SubscriptionsDirectory {
      * Removes subscription from CTrie, adds TNode when the last client unsubscribes, then calls for cleanTomb in a
      * separate atomic CAS operation.
      *
-     * @param topic the subscription's topic to remove.
+     * @param topic    the subscription's topic to remove.
      * @param clientID the Id of client owning the subscription.
      */
     @Override
@@ -113,5 +112,10 @@ public class CTrieSubscriptionDirectory implements SubscriptionsDirectory {
     @Override
     public String dumpTree() {
         return ctrie.dumpTree();
+    }
+
+    @Override
+    public Set<String> traverseHeadTokens() {
+        return ctrie.traverseHeadTokens();
     }
 }

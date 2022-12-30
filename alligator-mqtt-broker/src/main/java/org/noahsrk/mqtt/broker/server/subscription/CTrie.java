@@ -2,6 +2,7 @@ package org.noahsrk.mqtt.broker.server.subscription;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -63,6 +64,19 @@ public class CTrie {
 
     public Set<Subscription> recursiveMatch(Topic topic) {
         return recursiveMatch(topic, this.root);
+    }
+
+    public Set<String> traverseHeadTokens() {
+        Set<String> tokens = new HashSet<>();
+
+        INode inode = this.root;
+        List<INode> headNodes = inode.mainNode().allChildren();
+
+        for (INode node : headNodes) {
+            tokens.add(node.mainNode().token.name);
+        }
+
+        return tokens;
     }
 
     private Set<Subscription> recursiveMatch(Topic topic, INode inode) {
@@ -161,8 +175,23 @@ public class CTrie {
         Token token = topic.headToken();
         if (!topic.isEmpty() && (inode.mainNode().anyChildrenMatch(token))) {
             Topic remainingTopic = topic.exceptHeadToken();
-            INode nextInode = inode.mainNode().childOf(token);
-            return remove(clientId, remainingTopic, nextInode, inode);
+
+            CNode cnode = inode.mainNode();
+            INode nextInode = cnode.childOf(token);
+
+            Action action = remove(clientId, remainingTopic, nextInode, inode);
+
+            cnode = inode.mainNode();
+            // 清除为空的结点
+            if (Action.OK.equals(action) && cnode.allChildren().isEmpty()) {
+                if (inode == this.root) {
+                    return inode.compareAndSet(cnode, inode.mainNode().copy()) ? Action.OK : Action.REPEAT;
+                }
+                TNode tnode = new TNode();
+                return inode.compareAndSet(cnode, tnode) ? cleanTomb(inode, iParent) : Action.REPEAT;
+            } else {
+                return action;
+            }
         } else {
             final CNode cnode = inode.mainNode();
             if (cnode instanceof TNode) {
@@ -190,14 +219,12 @@ public class CTrie {
     }
 
     /**
-     *
      * Cleans Disposes of TNode in separate Atomic CAS operation per
      * http://bravenewgeek.com/breaking-and-entering-lose-the-lock-while-embracing-concurrency/
-     *
+     * <p>
      * We roughly follow this theory above, but we allow CNode with no Subscriptions to linger (for now).
      *
-     *
-     * @param inode inode that handle to the tomb node.
+     * @param inode   inode that handle to the tomb node.
      * @param iParent inode parent.
      * @return REPEAT if the this methods wasn't successful or OK.
      */

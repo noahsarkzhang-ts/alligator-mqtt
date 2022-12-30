@@ -34,4 +34,6 @@ public interface SubscriptionsDirectory {
     int size();
 
     String dumpTree();
+
+    Set<String> traverseHeadTokens();
 }

@@ -1,5 +1,6 @@
 package org.noahsrk.mqtt.broker.server.core;
 
+import org.noahsrk.mqtt.broker.server.clusters.bean.ClusterMessage;
 import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
 
 import java.util.concurrent.TimeUnit;
@@ -12,11 +13,11 @@ import java.util.concurrent.TimeUnit;
  **/
 public interface MqttEventBus {
 
-    void broadcast(PublishInnerMessage msg);
+    void broadcast(ClusterMessage msg);
 
-    void receive(PublishInnerMessage msg);
+    void receive(ClusterMessage msg);
 
-    PublishInnerMessage poll(long timeout, TimeUnit unit) throws InterruptedException;
+    ClusterMessage poll(long timeout, TimeUnit unit) throws InterruptedException;
 
     void publish2Subscribers(PublishInnerMessage message);
 }

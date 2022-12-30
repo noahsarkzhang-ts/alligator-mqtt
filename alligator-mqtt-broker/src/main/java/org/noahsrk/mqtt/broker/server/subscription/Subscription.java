@@ -60,15 +60,20 @@ public final class Subscription implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o)
+        if (this == o) {
             return true;
-        if (o == null || getClass() != o.getClass())
+        }
+
+        if (o == null || getClass() != o.getClass()) {
             return false;
+        }
 
         Subscription that = (Subscription) o;
 
-        if (clientId != null ? !clientId.equals(that.clientId) : that.clientId != null)
+        if (clientId != null ? !clientId.equals(that.clientId) : that.clientId != null) {
             return false;
+        }
+
         return !(topicFilter != null ? !topicFilter.equals(that.topicFilter) : that.topicFilter != null);
     }
 

@@ -13,14 +13,18 @@ import org.noahsark.rpc.socket.eventbus.EventBus;
 import org.noahsark.rpc.socket.session.Session;
 import org.noahsark.rpc.socket.tcp.client.TcpClient;
 import org.noahsark.rpc.socket.tcp.server.TcpServer;
-import org.noahsrk.mqtt.broker.server.clusters.bean.Loginfo;
+import org.noahsrk.mqtt.broker.server.clusters.bean.ClusterSubscriptionInfo;
+import org.noahsrk.mqtt.broker.server.clusters.bean.ServerLoginfo;
 import org.noahsrk.mqtt.broker.server.clusters.bean.ServerSubject;
+import org.noahsrk.mqtt.broker.server.clusters.processor.ClusterPublishProcessor;
+import org.noahsrk.mqtt.broker.server.clusters.processor.ClusterSubscriptionProcessor;
 import org.noahsrk.mqtt.broker.server.clusters.processor.ServerLoginProcessor;
 import org.noahsrk.mqtt.broker.server.clusters.serializer.ProtobufSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -119,12 +123,49 @@ public class MqttClusterGrid {
         // 2.与其它服务器建立连接
         buildConnect();
 
-        executor.scheduleAtFixedRate(this::dump, 5, 10, TimeUnit.SECONDS);
+        executor.scheduleAtFixedRate(this::dump, 10, 60, TimeUnit.SECONDS);
     }
 
     public void addServerSession(Integer index, Session session) {
         serverSessions.put(index, session);
         checkHealth();
+    }
+
+    public void subscription(ClusterSubscriptionInfo info) {
+        Integer serverId = info.getServerId();
+
+        Set<String> additions = info.getAddition();
+        Set<String> removes = info.getRemove();
+
+        additions.forEach(token -> {
+            Set<Integer> serverSet = topicHolders.get(token);
+            if (serverSet != null) {
+                serverSet = new HashSet<>();
+                topicHolders.put(token, serverSet);
+            }
+
+            serverSet.add(serverId);
+        });
+
+        removes.forEach(token -> {
+            Set<Integer> serverSet = topicHolders.get(token);
+            if (serverSet != null) {
+                serverSet.remove(serverId);
+            }
+        });
+
+    }
+
+    public  Map<String, Set<Integer>> getTopicHolders() {
+        return this.topicHolders;
+    }
+
+    public Map<Integer, Session> traverseSessions() {
+        return serverSessions;
+    }
+
+    public MqttServerInfo getCurrentServer() {
+        return this.currentServer;
     }
 
     private void register() {
@@ -135,6 +176,14 @@ public class MqttClusterGrid {
         // 2. 注册登陆处理器
         ServerLoginProcessor loginProcessor = new ServerLoginProcessor();
         loginProcessor.register();
+
+        // 3. 注册 广播 Publish 处理器
+        ClusterPublishProcessor publishProcessor = new ClusterPublishProcessor();
+        publishProcessor.register();
+
+        // 3. 注册 广播 Subscription 处理器
+        ClusterSubscriptionProcessor subscriptionProcessor = new ClusterSubscriptionProcessor();
+        subscriptionProcessor.register();
     }
 
     private void startupServer() {
@@ -272,13 +321,13 @@ public class MqttClusterGrid {
         }
 
         private Request buildLoginRequest() {
-            Loginfo loginfo = new Loginfo(currentServer.getId(), "token");
+            ServerLoginfo serverLoginfo = new ServerLoginfo(currentServer.getId(), "token");
 
             Request request = new Request.Builder()
                     .biz(5)
                     .cmd(100)
                     .serializer(SerializerType.PROBUFFER)
-                    .payload(loginfo)
+                    .payload(serverLoginfo)
                     .build();
 
             return request;

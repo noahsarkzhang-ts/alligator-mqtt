@@ -31,6 +31,8 @@ import io.netty.util.concurrent.Future;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.noahsrk.mqtt.broker.server.clusters.ClustersEventBus;
+import org.noahsrk.mqtt.broker.server.clusters.MqttClusterGrid;
 import org.noahsrk.mqtt.broker.server.config.BrokerConstants;
 import org.noahsrk.mqtt.broker.server.config.DefaultMqttSslContextFactory;
 import org.noahsrk.mqtt.broker.server.config.SslContextFactory;
@@ -107,10 +109,20 @@ public class Server {
 
         eventBusThread = new EventBusThread();
         eventBusThread.start();
+        // startCluster(config);
 
         final long startupTime = System.currentTimeMillis() - startTime;
         LOG.info("MQTT integration has been started successfully in {} ms", startupTime);
         initialized = true;
+    }
+
+    private void startCluster(Configuration config) {
+        MqttClusterGrid grid = MqttClusterGrid.getInstance();
+
+        grid.load(config);
+        grid.startup();
+
+        ClustersEventBus.getInstance();
     }
 
     public void stop() {

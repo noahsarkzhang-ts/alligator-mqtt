@@ -8,26 +8,26 @@ import java.util.Objects;
  * @author zhangxt
  * @date 2022/12/13 11:52
  **/
-public class Loginfo {
+public class ServerLoginfo {
 
-    private Integer clientId;
+    private Integer serverId;
 
     private String token;
 
-    public Loginfo() {
+    public ServerLoginfo() {
     }
 
-    public Loginfo(Integer clientId, String token) {
-        this.clientId = clientId;
+    public ServerLoginfo(Integer serverId, String token) {
+        this.serverId = serverId;
         this.token = token;
     }
 
-    public Integer getClientId() {
-        return clientId;
+    public Integer getServerId() {
+        return serverId;
     }
 
-    public void setClientId(Integer clientId) {
-        this.clientId = clientId;
+    public void setServerId(Integer serverId) {
+        this.serverId = serverId;
     }
 
     public String getToken() {
@@ -43,22 +43,22 @@ public class Loginfo {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof Loginfo)) {
+        if (!(o instanceof ServerLoginfo)) {
             return false;
         }
-        Loginfo loginfo = (Loginfo) o;
-        return Objects.equals(getClientId(), loginfo.getClientId());
+        ServerLoginfo serverLoginfo = (ServerLoginfo) o;
+        return Objects.equals(getServerId(), serverLoginfo.getServerId());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getClientId());
+        return Objects.hash(getServerId());
     }
 
     @Override
     public String toString() {
-        return "Loginfo{" +
-                "clientId=" + clientId +
+        return "ServerLoginfo{" +
+                "serverId=" + serverId +
                 ", token='" + token + '\'' +
                 '}';
     }

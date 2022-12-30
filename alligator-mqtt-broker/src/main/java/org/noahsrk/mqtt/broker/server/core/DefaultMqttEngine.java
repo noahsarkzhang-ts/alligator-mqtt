@@ -10,6 +10,10 @@ import io.netty.handler.codec.mqtt.MqttSubAckPayload;
 import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
 import io.netty.handler.codec.mqtt.MqttUnsubscribeMessage;
+import org.noahsrk.mqtt.broker.server.clusters.ClustersEventBus;
+import org.noahsrk.mqtt.broker.server.clusters.MqttClusterGrid;
+import org.noahsrk.mqtt.broker.server.clusters.bean.ClusterMessage;
+import org.noahsrk.mqtt.broker.server.clusters.bean.ClusterSubscriptionInfo;
 import org.noahsrk.mqtt.broker.server.common.Utils;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
@@ -31,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -71,7 +76,8 @@ public class DefaultMqttEngine implements MqttEngine {
 
     public void load() {
         authorizator = PermitAllAuthorizator.getInstance();
-        eventBus = MemoryMqttEventBus.getInstance();
+        eventBus = ClustersEventBus.getInstance();
+        //eventBus = MemoryMqttEventBus.getInstance();
         messageRepository = new MysqlMessageRepository();
 
         retainedRepository = MemoryRetainedRepository.getInstance();
@@ -103,7 +109,8 @@ public class DefaultMqttEngine implements MqttEngine {
 
         // 2, QOS0 无需持久化，广播消息即可。
         // MqttPublishMessage --> PublishInnerMessage
-        eventBus.broadcast(msg);
+        ClusterMessage clusterMessage = new ClusterMessage(ClusterMessage.ClusterMessageType.PUBLISH, msg);
+        eventBus.broadcast(clusterMessage);
     }
 
     @Override
@@ -122,7 +129,8 @@ public class DefaultMqttEngine implements MqttEngine {
 
         // 2. 广播消息
         // MqttPublishMessage --> PublishInnerMessage
-        eventBus.broadcast(msg);
+        ClusterMessage clusterMessage = new ClusterMessage(ClusterMessage.ClusterMessageType.PUBLISH, msg);
+        eventBus.broadcast(clusterMessage);
 
         // 3. 发送 ACK
         session.getConnection().sendPubAck(msg.getMessageId());
@@ -175,7 +183,8 @@ public class DefaultMqttEngine implements MqttEngine {
     }
 
     /**
-     *  处理 Retain 数据
+     * 处理 Retain 数据
+     *
      * @param msg PublishInnerMessage
      */
     private void processDataRetain(PublishInnerMessage msg) {
@@ -203,7 +212,8 @@ public class DefaultMqttEngine implements MqttEngine {
         session.receivedPubRelQos2(msg.getMessageId());
 
         // 3. 广播消息
-        eventBus.broadcast(msg);
+        ClusterMessage clusterMessage = new ClusterMessage(ClusterMessage.ClusterMessageType.PUBLISH, msg);
+        eventBus.broadcast(clusterMessage);
 
         // 3. 发送 PUBCOMP 消息
         session.getConnection().sendPubCompMessage(msg.getMessageId());
@@ -213,7 +223,8 @@ public class DefaultMqttEngine implements MqttEngine {
     }
 
     /**
-     *  将 PublishInnerMessage 转化为 StoredMessage
+     * 将 PublishInnerMessage 转化为 StoredMessage
+     *
      * @param msg PublishInnerMessage
      * @return StoredMessage
      */
@@ -246,11 +257,16 @@ public class DefaultMqttEngine implements MqttEngine {
                     return new Subscription(clientId, topic, req.qualityOfService());
                 }).collect(Collectors.toList());
 
+        LOG.info("Before Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+        Set<String> beforeHeadTokens = subscriptionsDirectory.traverseHeadTokens();
+
         for (Subscription subscription : newSubscriptions) {
             subscriptionsDirectory.add(subscription);
         }
 
-        LOG.info("Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+        Set<String> afterHeadTokens = subscriptionsDirectory.traverseHeadTokens();
+
+        LOG.info("After Ctrie tree:{}", subscriptionsDirectory.dumpTree());
 
         // 1.1 向 Session 中加入订阅关系
         session.addSubscriptions(newSubscriptions);
@@ -264,6 +280,7 @@ public class DefaultMqttEngine implements MqttEngine {
 
         // 2. 广播服务器与topic的订阅关系(增量新增)
         // TODO
+        broadcastSubscription(beforeHeadTokens, afterHeadTokens);
     }
 
     private void publishRetainedMessagesForSubscriptions(MqttSession session, List<Subscription> newSubscriptions) {
@@ -301,6 +318,9 @@ public class DefaultMqttEngine implements MqttEngine {
         final String clientId = session.getClientId();
         List<String> topics = msg.payload().topics();
 
+        LOG.info("Before Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+        Set<String> beforeHeadTokens = subscriptionsDirectory.traverseHeadTokens();
+
         for (String t : topics) {
             Topic topic = new Topic(t);
             boolean validTopic = topic.isValid();
@@ -319,12 +339,17 @@ public class DefaultMqttEngine implements MqttEngine {
             //  clientSession.unsubscribeFrom(topic);
         }
 
+        Set<String> afterHeadTokens = subscriptionsDirectory.traverseHeadTokens();
+
+        LOG.info("After Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+
         // 1.2 发送 ACK 消息
         int messageId = msg.variableHeader().messageId();
         session.getConnection().sendUnsubAckMessage(topics, clientId, messageId);
 
         // 2. 广播服务器与topic的订阅关系(如果减少，则移除订阅关系)
         // TODO
+        broadcastSubscription(beforeHeadTokens, afterHeadTokens);
     }
 
     /**
@@ -354,6 +379,42 @@ public class DefaultMqttEngine implements MqttEngine {
         PublishInnerMessage publishInnerMessage = new PublishInnerMessage(new Topic(will.getTopic()), will.isRetained(),
                 will.getQos(), will.getPayload());
 
-        eventBus.broadcast(publishInnerMessage);
+        ClusterMessage clusterMessage = new ClusterMessage(ClusterMessage.ClusterMessageType.PUBLISH, publishInnerMessage);
+        eventBus.broadcast(clusterMessage);
+    }
+
+    private Set<String> difference(Set<String> firstSet, Set<String> secondSet) {
+        Set<String> result = new HashSet<>();
+
+        firstSet.forEach(token -> {
+            if (!secondSet.contains(token)) {
+                result.add(token);
+            }
+        });
+
+        return result;
+    }
+
+    private ClusterSubscriptionInfo buildSubscriptionMessage(Set<String> beforeSet, Set<String> afterSet) {
+
+        ClusterSubscriptionInfo subscriptionInfo = new ClusterSubscriptionInfo();
+
+        subscriptionInfo.setServerId(MqttClusterGrid.getInstance().getCurrentServer().getId());
+        subscriptionInfo.setAddition(difference(afterSet, beforeSet));
+        subscriptionInfo.setRemove(difference(beforeSet, afterSet));
+
+        return subscriptionInfo;
+
+    }
+
+    private void broadcastSubscription(Set<String> beforeSet, Set<String> afterSet) {
+
+        ClusterSubscriptionInfo subscriptionInfo = buildSubscriptionMessage(beforeSet, afterSet);
+
+        if (subscriptionInfo.changed()) {
+
+            ClusterMessage clusterMessage = new ClusterMessage(ClusterMessage.ClusterMessageType.SUBSCRIPTION, subscriptionInfo);
+            eventBus.broadcast(clusterMessage);
+        }
     }
 }

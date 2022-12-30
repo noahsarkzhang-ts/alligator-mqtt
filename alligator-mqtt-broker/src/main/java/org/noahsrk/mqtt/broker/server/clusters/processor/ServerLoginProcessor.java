@@ -5,7 +5,7 @@ import org.noahsark.rpc.common.remote.Response;
 import org.noahsark.rpc.common.remote.RpcContext;
 import org.noahsark.rpc.socket.session.Session;
 import org.noahsrk.mqtt.broker.server.clusters.MqttClusterGrid;
-import org.noahsrk.mqtt.broker.server.clusters.bean.Loginfo;
+import org.noahsrk.mqtt.broker.server.clusters.bean.ServerLoginfo;
 import org.noahsrk.mqtt.broker.server.clusters.bean.ServerSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,16 +16,16 @@ import org.slf4j.LoggerFactory;
  * @author zhangxt
  * @date 2022/12/13 13:47
  **/
-public class ServerLoginProcessor extends AbstractProcessor<Loginfo> {
+public class ServerLoginProcessor extends AbstractProcessor<ServerLoginfo> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ServerLoginProcessor.class);
 
     @Override
-    protected void execute(Loginfo loginfo, RpcContext rpcContext) {
-        LOG.info("Receive login message:{}", loginfo);
+    protected void execute(ServerLoginfo serverLoginfo, RpcContext rpcContext) {
+        LOG.info("Receive Server login message:{}", serverLoginfo);
 
         Session session = (Session) rpcContext.getSession();
-        Integer index = loginfo.getClientId();
+        Integer index = serverLoginfo.getServerId();
         session.setStatus(Session.SessionStatus.AUTHORIZED);
 
         ServerSubject subject = new ServerSubject(index.toString());
@@ -38,8 +38,8 @@ public class ServerLoginProcessor extends AbstractProcessor<Loginfo> {
     }
 
     @Override
-    protected Class<Loginfo> getParamsClass() {
-        return Loginfo.class;
+    protected Class<ServerLoginfo> getParamsClass() {
+        return ServerLoginfo.class;
     }
 
     @Override

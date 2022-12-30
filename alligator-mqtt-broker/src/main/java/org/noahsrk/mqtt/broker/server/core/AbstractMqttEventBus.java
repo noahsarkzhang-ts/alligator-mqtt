@@ -1,6 +1,7 @@
 package org.noahsrk.mqtt.broker.server.core;
 
 import io.netty.handler.codec.mqtt.MqttQoS;
+import org.noahsrk.mqtt.broker.server.clusters.bean.ClusterMessage;
 import org.noahsrk.mqtt.broker.server.context.MqttSession;
 import org.noahsrk.mqtt.broker.server.context.SessionManager;
 import org.noahsrk.mqtt.broker.server.core.bean.PublishInnerMessage;
@@ -22,7 +23,7 @@ import java.util.concurrent.TimeUnit;
  **/
 public abstract class AbstractMqttEventBus implements MqttEventBus {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AbstractMqttEventBus.class);
+    protected static final Logger LOG = LoggerFactory.getLogger(AbstractMqttEventBus.class);
 
     private PermitAllAuthorizator authorizator;
     private SessionManager sessionManager;
@@ -33,17 +34,17 @@ public abstract class AbstractMqttEventBus implements MqttEventBus {
     }
 
     @Override
-    public void broadcast(PublishInnerMessage msg) {
+    public void broadcast(ClusterMessage msg) {
         throw new OprationNotSupportedException();
     }
 
     @Override
-    public void receive(PublishInnerMessage msg) {
+    public void receive(ClusterMessage msg) {
         throw new OprationNotSupportedException();
     }
 
     @Override
-    public PublishInnerMessage poll(long timeout, TimeUnit unit) throws InterruptedException {
+    public ClusterMessage poll(long timeout, TimeUnit unit) throws InterruptedException {
         throw new OprationNotSupportedException();
     }
 
