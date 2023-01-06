@@ -3,13 +3,15 @@ package org.noahsark.mqtt.broker.sever;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.junit.Before;
 import org.junit.Test;
-import org.noahsrk.mqtt.broker.server.core.repository.MemorySubscriptionsRepository;
-import org.noahsrk.mqtt.broker.server.core.repository.SubscriptionsRepository;
-import org.noahsrk.mqtt.broker.server.subscription.CTrieSubscriptionDirectory;
-import org.noahsrk.mqtt.broker.server.subscription.Subscription;
-import org.noahsrk.mqtt.broker.server.subscription.Topic;
+import org.noahsark.mqtt.broker.repository.MemorySubscriptionsRepository;
+import org.noahsark.mqtt.broker.repository.SubscriptionsRepository;
+import org.noahsark.mqtt.broker.protocol.subscription.CTrieSubscriptionDirectory;
+import org.noahsark.mqtt.broker.protocol.subscription.Subscription;
+import org.noahsark.mqtt.broker.protocol.subscription.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Set;
 
 /**
  * CtrieSubscription 测试
@@ -31,12 +33,6 @@ public class CTrieSubscriptionTest {
         subscriptionsDirectory = new CTrieSubscriptionDirectory();
         subscriptionsDirectory.init(subscriptionsRepository);
 
-        String clientId = "device1";
-        String topic = "a/b/c";
-        MqttQoS qos = MqttQoS.valueOf(2);
-
-        Subscription subscription = new Subscription(clientId,new Topic(topic), qos);
-        subscriptionsDirectory.add(subscription);
     }
 
     @Test
@@ -64,6 +60,34 @@ public class CTrieSubscriptionTest {
         subscriptionsDirectory.removeSubscription(new Topic(topic),clientId);
 
         LOG.info("after:{}",subscriptionsDirectory.dumpTree());
+    }
+
+    @Test
+    public void matchMultiTest() {
+        String clientId = "device1";
+        String topic = "a/b/c/#";
+        MqttQoS qos = MqttQoS.valueOf(2);
+
+        Subscription subscription = new Subscription(clientId,new Topic(topic), qos);
+        subscriptionsDirectory.add(subscription);
+
+        final Set<Subscription> subscriptions = subscriptionsDirectory.matchQosSharpening(new Topic("a/b/c"));
+
+        subscriptions.forEach(subscription1 -> LOG.info("subscription:{}",subscription1));
+    }
+
+    @Test
+    public void matchSingleTest() {
+        String clientId = "device1";
+        String topic = "a/b/c/+";
+        MqttQoS qos = MqttQoS.valueOf(2);
+
+        Subscription subscription = new Subscription(clientId,new Topic(topic), qos);
+        subscriptionsDirectory.add(subscription);
+
+        final Set<Subscription> subscriptions = subscriptionsDirectory.matchQosSharpening(new Topic("a/b/c/"));
+
+        subscriptions.forEach(subscription1 -> LOG.info("subscription:{}",subscription1));
     }
 
 

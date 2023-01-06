@@ -4,8 +4,9 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.junit.Test;
-import org.noahsrk.mqtt.broker.server.Server;
-import org.noahsrk.mqtt.broker.server.clusters.MqttClusterGrid;
+import org.noahsark.mqtt.broker.Server;
+import org.noahsark.mqtt.broker.clusters.MqttEventBusManager;
+import org.noahsark.mqtt.broker.common.factory.MqttBeanFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,7 @@ public class ClusterGridTest {
 
     @Test
     public void testMqttClusterGrid1() {
-        MqttClusterGrid node1 = MqttClusterGrid.getInstance();
+        MqttEventBusManager node1 = MqttBeanFactory.getInstance().mqttEventBusManager();
         Configuration configuration = getConfiguration(NODE1_CONFIG);
 
         node1.load(configuration);
@@ -47,7 +48,7 @@ public class ClusterGridTest {
 
     @Test
     public void testMqttClusterGrid2() {
-        MqttClusterGrid node2 = MqttClusterGrid.getInstance();
+        MqttEventBusManager node2 = MqttBeanFactory.getInstance().mqttEventBusManager();
         Configuration configuration = getConfiguration(NODE2_CONFIG);
 
         node2.load(configuration);
@@ -67,9 +68,10 @@ public class ClusterGridTest {
     @Test
     public void testNode1() {
         Server server = new Server();
-        Configuration configuration = getConfiguration(NODE1_CONFIG);
 
-        server.start(configuration);
+        String [] args = {"-f","E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\test\\resources\\config\\alligator1.properties"};
+
+        server.start(args);
 
         try {
             TimeUnit.MINUTES.sleep(10);
@@ -81,9 +83,25 @@ public class ClusterGridTest {
     @Test
     public void testNode2() {
         Server server = new Server();
-        Configuration configuration = getConfiguration(NODE2_CONFIG);
 
-        server.start(configuration);
+        String [] args = {"-f","E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\test\\resources\\config\\alligator2.properties"};
+
+        server.start(args);
+
+        try {
+            TimeUnit.MINUTES.sleep(10);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testNodeStart() {
+        String [] args = {"-f","E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\test\\resources\\config\\alligator.properties"};
+        // String [] args = {};
+
+        Server server = new Server();
+        server.start(args);
 
         try {
             TimeUnit.MINUTES.sleep(10);
