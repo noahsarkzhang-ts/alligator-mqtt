@@ -40,11 +40,26 @@ public class CTrieSubscriptionTest {
 
         LOG.info("before:{}",subscriptionsDirectory.dumpTree());
 
-        String clientId = "device2";
-        String topic = "a/b/c/";
+        String clientId = "device1";
+        String topic = "a/";
         MqttQoS qos = MqttQoS.valueOf(2);
 
         Subscription subscription = new Subscription(clientId,new Topic(topic), qos);
+        subscriptionsDirectory.add(subscription);
+
+
+        clientId = "device2";
+        topic = "a/b";
+        qos = MqttQoS.valueOf(2);
+
+        subscription = new Subscription(clientId,new Topic(topic), qos);
+        subscriptionsDirectory.add(subscription);
+
+        clientId = "device3";
+        topic = "a/b/";
+        qos = MqttQoS.valueOf(2);
+
+        subscription = new Subscription(clientId,new Topic(topic), qos);
         subscriptionsDirectory.add(subscription);
 
         LOG.info("after:{}",subscriptionsDirectory.dumpTree());
@@ -65,13 +80,13 @@ public class CTrieSubscriptionTest {
     @Test
     public void matchMultiTest() {
         String clientId = "device1";
-        String topic = "a/b/c/#";
+        String topic = "a/#";
         MqttQoS qos = MqttQoS.valueOf(2);
 
         Subscription subscription = new Subscription(clientId,new Topic(topic), qos);
         subscriptionsDirectory.add(subscription);
 
-        final Set<Subscription> subscriptions = subscriptionsDirectory.matchQosSharpening(new Topic("a/b/c"));
+        final Set<Subscription> subscriptions = subscriptionsDirectory.matchQosSharpening(new Topic("a/"));
 
         subscriptions.forEach(subscription1 -> LOG.info("subscription:{}",subscription1));
     }
@@ -79,13 +94,13 @@ public class CTrieSubscriptionTest {
     @Test
     public void matchSingleTest() {
         String clientId = "device1";
-        String topic = "a/b/c/+";
+        String topic = "a/+";
         MqttQoS qos = MqttQoS.valueOf(2);
 
         Subscription subscription = new Subscription(clientId,new Topic(topic), qos);
         subscriptionsDirectory.add(subscription);
 
-        final Set<Subscription> subscriptions = subscriptionsDirectory.matchQosSharpening(new Topic("a/b/c/"));
+        final Set<Subscription> subscriptions = subscriptionsDirectory.matchQosSharpening(new Topic("a/"));
 
         subscriptions.forEach(subscription1 -> LOG.info("subscription:{}",subscription1));
     }

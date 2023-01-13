@@ -10,22 +10,23 @@ import java.io.Serializable;
  **/
 public class StoredMessage implements Serializable {
 
-    private int id;
+    private long id;
     private String topic;
     private int qos;
     private byte[] payload;
+    private long offset;
 
     public StoredMessage() {
     }
 
-    public StoredMessage(int id, String topic, int qos, byte[] payload) {
+    public StoredMessage(long id, String topic, int qos, byte[] payload) {
         this.id = id;
         this.topic = topic;
         this.qos = qos;
         this.payload = payload;
     }
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
@@ -55,5 +56,13 @@ public class StoredMessage implements Serializable {
 
     public void setTopic(String topic) {
         this.topic = topic;
+    }
+
+    public long getOffset() {
+        return offset;
+    }
+
+    public void setOffset(long offset) {
+        this.offset = offset;
     }
 }

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.noahsark.mqtt.broker.mybatis.StoredMessageMapper">
+
+    <select id="getMessageById" resultType="StoredMessage">
+        select * from t_stored_message where id = #{id}
+    </select>
+
+    <insert id="store" parameterType="StoredMessage" useGeneratedKeys="true"
+            keyProperty="id">
+        insert into t_stored_message (topic,qos,payload,offset)
+        values (#{topic},#{qos},#{payload},#{offset})
+    </insert>
+
+</mapper>
