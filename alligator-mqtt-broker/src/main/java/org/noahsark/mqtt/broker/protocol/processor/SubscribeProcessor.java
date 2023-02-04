@@ -45,7 +45,7 @@ public class SubscribeProcessor implements MessageProcessor {
 
             MqttSession mqttSession = SessionManager.getInstance().retrieve(clientId);
 
-            mqttEngine.subcribe(mqttSession, message);
+            mqttEngine.subscribe(mqttSession, message);
         } finally {
             ReferenceCountUtil.release(message);
         }

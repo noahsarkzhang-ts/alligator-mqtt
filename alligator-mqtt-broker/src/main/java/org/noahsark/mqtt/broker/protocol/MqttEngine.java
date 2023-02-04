@@ -9,6 +9,7 @@ import org.noahsark.mqtt.broker.protocol.entity.PublishInnerMessage;
 import org.noahsark.mqtt.broker.protocol.subscription.Subscription;
 import org.noahsark.mqtt.broker.protocol.subscription.Topic;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -27,9 +28,13 @@ public interface MqttEngine {
 
     void receivePubrel(MqttSession session, PublishInnerMessage msg);
 
-    void subcribe(MqttSession session, MqttSubscribeMessage msg);
+    void subscribe(MqttSession session, MqttSubscribeMessage msg);
+
+    void subscribe(List<Subscription> subscriptions);
 
     void unsubscribe(MqttSession session, MqttUnsubscribeMessage msg);
+
+    void unsubscribe(List<Subscription> subscriptions);
 
     Set<Subscription> matchQosSharpening(Topic topic);
 

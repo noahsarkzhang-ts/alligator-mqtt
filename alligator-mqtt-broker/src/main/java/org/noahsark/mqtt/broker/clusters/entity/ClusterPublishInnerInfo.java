@@ -65,7 +65,7 @@ public class ClusterPublishInnerInfo {
     public String toString() {
         return "ClusterPublishInnerInfo{" +
                 "topic='" + topic + '\'' +
-                ", retain=" + retain +
+                ", addRetainMessage=" + retain +
                 ", qos=" + qos +
                 ", messageId=" + messageId +
                 '}';

@@ -2,7 +2,7 @@ package org.noahsark.mqtt.broker.clusters.processor;
 
 import org.noahsark.mqtt.broker.clusters.entity.ClusterMessage;
 import org.noahsark.mqtt.broker.clusters.entity.ClusterSubscriptionInfo;
-import org.noahsark.mqtt.broker.common.factory.MqttBeanFactory;
+import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
 import org.noahsark.rpc.common.dispatcher.AbstractProcessor;
 import org.noahsark.rpc.common.remote.Response;
 import org.noahsark.rpc.common.remote.RpcContext;
@@ -23,8 +23,7 @@ public class ClusterSubscriptionProcessor extends AbstractProcessor<ClusterSubsc
     protected void execute(ClusterSubscriptionInfo clusterSubscriptionInfo, RpcContext rpcContext) {
         LOG.info("Receive cluster subscription info:{}", clusterSubscriptionInfo);
 
-        ClusterMessage clusterMessage = new ClusterMessage(ClusterMessage.ClusterMessageType.SUBSCRIPTION, clusterSubscriptionInfo);
-        MqttBeanFactory.getInstance().mqttEventBus().receive(clusterMessage);
+        MqttModuleFactory.getInstance().mqttEventBusManager().subscription(clusterSubscriptionInfo);
 
         rpcContext.sendResponse(Response.buildCommonResponse(rpcContext.getCommand(), 0, "success"));
     }

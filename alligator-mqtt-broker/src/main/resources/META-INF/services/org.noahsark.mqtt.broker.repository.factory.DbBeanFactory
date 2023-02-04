@@ -1,0 +1,2 @@
+org.noahsark.mqtt.broker.repository.factory.MysqlDbBeanFactory
+org.noahsark.mqtt.broker.repository.factory.MemoryDbBeanFactory

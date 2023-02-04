@@ -28,7 +28,6 @@ public abstract class AbstractMqttEventBus implements MqttEventBus {
     protected static final Logger LOG = LoggerFactory.getLogger(AbstractMqttEventBus.class);
 
     private PermitAllAuthorizator authorizator;
-    private SessionManager sessionManager;
 
     public AbstractMqttEventBus() {
     }
@@ -36,7 +35,6 @@ public abstract class AbstractMqttEventBus implements MqttEventBus {
     @Override
     public void init() {
         authorizator = PermitAllAuthorizator.getInstance();
-        sessionManager = SessionManager.getInstance();
     }
 
     @Override
@@ -59,7 +57,7 @@ public abstract class AbstractMqttEventBus implements MqttEventBus {
         LOG.info("Push a PublishedMessage:{},{}", message.getTopic(), message.getQos());
 
         // ByteBuf origPayload = message.getPayload();
-        Topic topic = message.getTopic();
+        Topic topic = new Topic(message.getTopic());
         MqttQoS publishingQos = MqttQoS.valueOf(message.getQos());
 
         Set<Subscription> topicMatchingSubscriptions = DefaultMqttEngine.getInstance().matchQosSharpening(topic);
@@ -70,7 +68,7 @@ public abstract class AbstractMqttEventBus implements MqttEventBus {
             LOG.info("Matched Subscription: {}, publishingQos: {}", sub.toString(), publishingQos);
 
             MqttQoS qos = DefaultMqttEngine.getInstance().lowerQosToTheSubscriptionDesired(sub, publishingQos);
-            MqttSession targetSession = sessionManager.retrieve(sub.getClientId());
+            MqttSession targetSession = SessionManager.getInstance().retrieve(sub.getClientId());
 
             boolean isSessionPresent = targetSession != null;
             if (isSessionPresent) {
@@ -82,7 +80,7 @@ public abstract class AbstractMqttEventBus implements MqttEventBus {
                     return;
                 }
 
-                // we need to retain because duplicate only copy r/w indexes and don't retain() causing refCnt = 0
+                // we need to addRetainMessage because duplicate only copy r/w indexes and don't addRetainMessage() causing refCnt = 0
                 //ByteBuf payload = Unpooled.wrappedBuffer(message.getPayload());
 
                 targetSession.sendPublishOnSessionAtQos(topic, qos, message.getPayload());

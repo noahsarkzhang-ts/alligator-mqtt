@@ -10,10 +10,10 @@ public class RedisConstant {
 
     /**
      *  Client Session 的 redis key
-     *  格式：s:l:{clientId}
+     *  格式：s:ol:{clientId}
      *  数据类型：String
      */
-    private static final String SESSION_KEY_FORMAT = "s:l:%s";
+    private static final String SESSION_KEY_FORMAT = "s:ol:%s";
 
     /**
      *  存放发送中的 QOS1&2 PublishMessage 消息
@@ -30,6 +30,13 @@ public class RedisConstant {
     private static final String SESSION_PUBREL_KEY_FORMAT = "s:f:r:%s";
 
     /**
+     *  存放收到的 QOS1&2 PublishMessage 消息
+     *  格式：s:f:r:{clientId}
+     *  数据类型：Hash,{key=packetId, value=message}
+     */
+    private static final String SESSION_RECEIVE_KEY_FORMAT = "s:f:ri:%s";
+
+    /**
      *  存放 QOS1&2 级别 Topic 的 offset 位置
      *  格式：s:t:{clientId}
      *  数据类型：Hash,{key=topic, value=offset}
@@ -39,7 +46,7 @@ public class RedisConstant {
     /**
      *  存放客户端的订阅关系
      *  格式：s:s:{clientId}
-     *  数据类型：Set,{subscription...}
+     *  数据类型：Hash,{key=topic, value=subscription}
      */
     private static final String SESSION_SUBSCRIPTION_FORMAT = "s:s:%s";
 
@@ -51,11 +58,18 @@ public class RedisConstant {
     private static final String SESSION_WILL_FORMAT = "s:w:%s";
 
     /**
-     *  存放 Topic 的 retain 信息
+     *  存放 Topic 的 addRetainMessage 信息
      *  格式：t:r:{topic}
-     *  数据类型：String
+     *  数据类型：List
      */
-    private static final String TOPIC_RETAIN_FORMAT = "s:t:%s";
+    private static final String TOPIC_RETAIN_FORMAT = "t:r:%s";
+
+    /**
+     *  存放 Topic 当前 offset
+     *  格式：t:o:{topic}
+     *  数据类型：String(int)
+     */
+    private static final String TOPIC_OFFSET_FORMAT = "t:o:%s";
 
 
 }

@@ -1,7 +1,7 @@
 package org.noahsark.mqtt.broker.mybatis;
 
 import org.apache.ibatis.annotations.Param;
-import org.noahsark.mqtt.broker.protocol.entity.StoredMessage;
+import org.noahsark.mqtt.broker.repository.entity.StoredMessage;
 
 /**
  * StoredMessage Mapper

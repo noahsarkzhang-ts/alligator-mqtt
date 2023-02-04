@@ -6,7 +6,7 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import org.junit.Before;
 import org.junit.Test;
-import org.noahsark.mqtt.broker.protocol.entity.StoredMessage;
+import org.noahsark.mqtt.broker.repository.entity.StoredMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

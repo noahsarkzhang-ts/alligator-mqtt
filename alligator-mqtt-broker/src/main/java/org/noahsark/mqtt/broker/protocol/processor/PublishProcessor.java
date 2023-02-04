@@ -93,9 +93,10 @@ public class PublishProcessor implements MessageProcessor {
         payload.getBytes(0, rawPayload);
 
         message.setPayload(rawPayload);
-        message.setTopic(topic);
+        message.setTopic(topic.getRawTopic());
         message.setQos(qos.value());
         message.setRetain(retain);
+        message.setTimestamp(System.currentTimeMillis());
 
         return message;
 

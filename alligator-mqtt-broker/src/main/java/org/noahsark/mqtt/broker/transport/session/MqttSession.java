@@ -8,21 +8,23 @@ import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
 import org.noahsark.mqtt.broker.common.util.NettyUtils;
-import org.noahsark.mqtt.broker.protocol.entity.EnqueuedMessage;
-import org.noahsark.mqtt.broker.protocol.entity.PubRelMarker;
+import org.noahsark.mqtt.broker.protocol.DefaultMqttEngine;
 import org.noahsark.mqtt.broker.protocol.entity.PublishInnerMessage;
 import org.noahsark.mqtt.broker.protocol.entity.Will;
 import org.noahsark.mqtt.broker.protocol.subscription.Subscription;
 import org.noahsark.mqtt.broker.protocol.subscription.Topic;
+import org.noahsark.mqtt.broker.repository.InflightMessageRepository;
+import org.noahsark.mqtt.broker.repository.SubscriptionsRepository;
+import org.noahsark.mqtt.broker.repository.entity.StoredSubscription;
+import org.noahsark.mqtt.broker.repository.factory.CacheBeanFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +44,22 @@ public class MqttSession {
     private static final int FLIGHT_BEFORE_RESEND_MS = 5_000;
     private static final int INFLIGHT_WINDOW_SIZE = 10;
 
+    // 会话状态
+    private final AtomicReference<MqttSessionStatus> status = new AtomicReference<>(MqttSessionStatus.DISCONNECTED);
+
+    private CacheBeanFactory cacheBeanFactory;
+
+    // 缓存发送中或接收中的消息
+    private InflightMessageRepository inflightRepository;
+
+    private DelayQueue<InFlightPacket> inflightTimeouts = new DelayQueue<>();
+
+    // 发送未确认的消息窗口大小
+    private AtomicInteger inflightSlots = new AtomicInteger(INFLIGHT_WINDOW_SIZE);
+
+    // 会话的订阅关系
+    private SubscriptionsRepository subscriptionsRepository;
+
     // 会话所属的客户端 id
     private String clientId;
 
@@ -57,40 +75,39 @@ public class MqttSession {
     // 客户端连接对象
     private MqttConnection connection;
 
-    // 存放发送的 QOS1&2 的 PublishMessage 及 PubRel 数据
-    private final Map<Integer, EnqueuedMessage> inflightWindow = new HashMap<>();
-    // 按照发送的时间对数据包进行排序
-    private final DelayQueue<InFlightPacket> inflightTimeouts = new DelayQueue<>();
-    // 发送未确认的消息窗口大小
-    private final AtomicInteger inflightSlots = new AtomicInteger(INFLIGHT_WINDOW_SIZE);
-
-    // 存放收到的 QOS2 的 PublishMessage 数据
-    private final Map<Integer, PublishInnerMessage> qos2Receiving = new HashMap<>();
-
-    // 会话状态
-    private final AtomicReference<MqttSessionStatus> status = new AtomicReference<>(MqttSessionStatus.DISCONNECTED);
-
-    // 会话的订阅关系
-    private List<Subscription> subscriptions = new ArrayList<>();
+    /**
+     * 创建时间
+     */
+    private long timestamp;
 
     public MqttSession(MqttConnection connection) {
+        init();
+
         this.connection = connection;
     }
 
     public MqttSession(String clientId, String userName, MqttConnection connection, boolean clean, Will will) {
+        init();
+
         this.userName = userName;
         this.clientId = clientId;
         this.connection = connection;
         this.clean = clean;
         this.will = will;
+
+        timestamp = System.currentTimeMillis();
+    }
+
+    private void init() {
+        cacheBeanFactory = MqttModuleFactory.getInstance().cacheBeanFactory();
+
+        inflightRepository = cacheBeanFactory.inflightMessageRepository();
+        subscriptionsRepository = cacheBeanFactory.subscriptionsRepository();
+
     }
 
     public void markConnected() {
         assignState(MqttSessionStatus.DISCONNECTED, MqttSessionStatus.CONNECTED);
-    }
-
-    private boolean assignState(MqttSessionStatus expected, MqttSessionStatus newState) {
-        return status.compareAndSet(expected, newState);
     }
 
     public void disconnect() {
@@ -108,7 +125,14 @@ public class MqttSession {
     }
 
     public void addSubscriptions(List<Subscription> newSubscriptions) {
-        subscriptions.addAll(newSubscriptions);
+        newSubscriptions.forEach(subscription -> {
+            subscriptionsRepository.addSubscription(clientId, StoredSubscription.fromSubscription(subscription));
+        });
+
+    }
+
+    public void removeSubscription(String topic) {
+        subscriptionsRepository.removeSubscription(clientId, topic);
     }
 
     public void sendPublishOnSessionAtQos(Topic topic, MqttQoS qos, byte[] payload) {
@@ -135,11 +159,11 @@ public class MqttSession {
             return;
         }
 
-        sendPublishMoreThan1(topic, qos,payload);
+        sendPublishMoreThan1(topic, qos, payload);
     }
 
     private void sendPublishQos2(Topic topic, MqttQoS qos, byte[] payload) {
-        sendPublishMoreThan1(topic, qos,payload);
+        sendPublishMoreThan1(topic, qos, payload);
     }
 
     private void sendPublishMoreThan1(Topic topic, MqttQoS qos, byte[] payload) {
@@ -147,8 +171,13 @@ public class MqttSession {
         if (canSkipQueue()) {
             inflightSlots.decrementAndGet();
             int packetId = connection.nextPacketId();
-            inflightWindow.put(packetId, new PublishInnerMessage(topic, false, qos.value(), payload));
-            inflightTimeouts.add(new InFlightPacket(packetId, FLIGHT_BEFORE_RESEND_MS));
+
+            PublishInnerMessage publishInnerMessage = new PublishInnerMessage(topic.getRawTopic(), false, qos.value(), payload);
+            publishInnerMessage.setMessageId(packetId);
+            publishInnerMessage.setTimestamp(System.currentTimeMillis());
+
+            inflightRepository.addMessage(clientId, publishInnerMessage, true);
+            inflightTimeouts.add(new InFlightPacket(packetId, publishInnerMessage.getTimestamp() + FLIGHT_BEFORE_RESEND_MS));
 
             ByteBuf messagePayload = Unpooled.wrappedBuffer(payload);
             MqttPublishMessage publishMsg = connection.notRetainedPublishWithMessageId(topic.toString(), qos,
@@ -163,7 +192,7 @@ public class MqttSession {
     }
 
     public void receivedPublishQos2(PublishInnerMessage msg) {
-        qos2Receiving.put(msg.getMessageId(), msg);
+        inflightRepository.addMessage(clientId, msg, false);
         connection.sendPublishReceived(msg.getMessageId());
     }
 
@@ -174,7 +203,7 @@ public class MqttSession {
 
     public void pubAckReceived(int ackPacketId) {
         // TODO remain to invoke in somehow m_interceptor.notifyMessageAcknowledged
-        inflightWindow.remove(ackPacketId);
+        inflightRepository.removeMessage(clientId, ackPacketId, true);
         inflightSlots.incrementAndGet();
 
         // TODO 处理队列中的数据
@@ -188,9 +217,9 @@ public class MqttSession {
         debugLogPacketIds(expired);
 
         for (InFlightPacket notAckPacketId : expired) {
-            if (inflightWindow.containsKey(notAckPacketId.packetId)) {
-                final PublishInnerMessage msg = (PublishInnerMessage) inflightWindow.get(notAckPacketId.packetId);
-                final Topic topic = msg.getTopic();
+            if (inflightRepository.contain(clientId, notAckPacketId.packetId, true)) {
+                final PublishInnerMessage msg = inflightRepository.getMessage(clientId, notAckPacketId.packetId, true);
+                final String topic = msg.getTopic();
                 final MqttQoS qos = MqttQoS.valueOf(msg.getQos());
                 final ByteBuf payload = Unpooled.wrappedBuffer(msg.getPayload());
                 final ByteBuf copiedPayload = payload.retainedDuplicate();
@@ -200,10 +229,23 @@ public class MqttSession {
         }
     }
 
-    private MqttPublishMessage publishNotRetainedDuplicated(InFlightPacket notAckPacketId, Topic topic, MqttQoS qos,
+    public MqttSessionStatus getStatus() {
+        return status.get();
+    }
+
+    public void resetStatus(int vlaue) {
+        status.set(MqttSessionStatus.valueOf(vlaue));
+    }
+
+
+    private boolean assignState(MqttSessionStatus expected, MqttSessionStatus newState) {
+        return status.compareAndSet(expected, newState);
+    }
+
+    private MqttPublishMessage publishNotRetainedDuplicated(InFlightPacket notAckPacketId, String topic, MqttQoS qos,
                                                             ByteBuf payload) {
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, true, qos, false, 0);
-        MqttPublishVariableHeader varHeader = new MqttPublishVariableHeader(topic.toString(), notAckPacketId.packetId);
+        MqttPublishVariableHeader varHeader = new MqttPublishVariableHeader(topic, notAckPacketId.packetId);
         return new MqttPublishMessage(fixedHeader, varHeader, payload);
     }
 
@@ -220,13 +262,16 @@ public class MqttSession {
     }
 
     public void processPubRec(int packetId) {
-        inflightWindow.remove(packetId);
+        //inflightWindow.remove(packetId);
+        inflightRepository.removeMessage(clientId, packetId, true);
         inflightSlots.incrementAndGet();
         if (canSkipQueue()) {
             inflightSlots.decrementAndGet();
             int pubRelPacketId = packetId/*mqttConnection.nextPacketId()*/;
-            inflightWindow.put(pubRelPacketId, new PubRelMarker());
-            inflightTimeouts.add(new InFlightPacket(pubRelPacketId, FLIGHT_BEFORE_RESEND_MS));
+            inflightRepository.addPubRel(clientId, pubRelPacketId);
+            // inflightWindow.put(pubRelPacketId, new PubRelMarker());
+            inflightTimeouts.add(new InFlightPacket(pubRelPacketId,
+                    System.currentTimeMillis() + FLIGHT_BEFORE_RESEND_MS));
             MqttMessage pubRel = connection.pubrel(pubRelPacketId);
             connection.sendIfWritableElseDrop(pubRel);
 
@@ -236,16 +281,53 @@ public class MqttSession {
         }
     }
 
+    public void rebuildInflightTimoutQueueFromCache() {
+        List<PublishInnerMessage> inflightMessages = inflightRepository.getAllMessages(clientId, true);
+
+        inflightMessages.forEach(msg -> inflightTimeouts.add(new InFlightPacket(msg.getMessageId(), msg.getTimestamp())));
+    }
+
+    public void resubscribeFromCache() {
+
+        DefaultMqttEngine.getInstance().subscribe(getAllSubscriptions());
+    }
+
+    public void cleanSubscriptions() {
+
+        DefaultMqttEngine.getInstance().unsubscribe(getAllSubscriptions());
+    }
+
+    public void cleanInflightMsg() {
+        inflightRepository.clean(clientId);
+    }
+
+    public List<Subscription> getAllSubscriptions() {
+        List<StoredSubscription> subscriptions = subscriptionsRepository.getAllSubscriptions(clientId);
+
+        List<Subscription> list = new ArrayList<>();
+
+        subscriptions.forEach(subscription -> {
+            list.add(new Subscription(subscription.getClientId(), new Topic(subscription.getTopicFilter()),
+                    MqttQoS.valueOf(subscription.getQos())));
+        });
+
+        return list;
+    }
+
     public void receivedPubRelQos2(int messageID) {
-        qos2Receiving.remove(messageID);
+        // qos2Receiving.remove(messageID);
+        inflightRepository.removeMessage(clientId, messageID, false);
     }
 
     public PublishInnerMessage retrieveMsgQos2(int messageID) {
-        return qos2Receiving.get(messageID);
+
+        return inflightRepository.getMessage(clientId, messageID, false);
     }
 
     public void processPubComp(int messageID) {
-        inflightWindow.remove(messageID);
+        // inflightWindow.remove(messageID);
+
+        inflightRepository.removePubRel(clientId, messageID);
         inflightSlots.incrementAndGet();
 
         //drainQueueToConnection();
@@ -316,12 +398,12 @@ public class MqttSession {
 
     private static class InFlightPacket implements Delayed {
 
-        final int packetId;
+        private int packetId;
         private long startTime;
 
-        InFlightPacket(int packetId, long delayInMilliseconds) {
+        InFlightPacket(int packetId, long timoutInMilliseconds) {
             this.packetId = packetId;
-            this.startTime = System.currentTimeMillis() + delayInMilliseconds;
+            this.startTime = timoutInMilliseconds;
         }
 
         @Override
@@ -344,7 +426,31 @@ public class MqttSession {
     }
 
     public enum MqttSessionStatus {
-        CONNECTED, DISCONNECTING, DISCONNECTED
+        CONNECTED(0), DISCONNECTING(1), DISCONNECTED(2);
+
+        private int value;
+
+        MqttSessionStatus(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return this.value;
+        }
+
+        public static MqttSessionStatus valueOf(int value) {
+            switch (value) {
+                case 0:
+                    return CONNECTED;
+                case 1:
+                    return DISCONNECTING;
+                case 2:
+                    return DISCONNECTED;
+                default:
+                    throw new IllegalArgumentException("invalid MqttSessionStatus: " + value);
+            }
+        }
+
     }
 
 

@@ -10,30 +10,28 @@ import io.netty.handler.codec.mqtt.MqttSubAckPayload;
 import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttTopicSubscription;
 import io.netty.handler.codec.mqtt.MqttUnsubscribeMessage;
-import org.noahsark.mqtt.broker.clusters.ClusterMqttEventBusManager;
-import org.noahsark.mqtt.broker.clusters.SingletonEventBus;
 import org.noahsark.mqtt.broker.clusters.MqttEventBus;
 import org.noahsark.mqtt.broker.clusters.entity.ClusterMessage;
 import org.noahsark.mqtt.broker.clusters.entity.ClusterSubscriptionInfo;
-import org.noahsark.mqtt.broker.common.factory.MqttBeanFactory;
+import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
 import org.noahsark.mqtt.broker.common.util.Utils;
-import org.noahsark.mqtt.broker.protocol.entity.Will;
-import org.noahsark.mqtt.broker.transport.session.MqttSession;
 import org.noahsark.mqtt.broker.protocol.entity.PublishInnerMessage;
 import org.noahsark.mqtt.broker.protocol.entity.RetainedMessage;
-import org.noahsark.mqtt.broker.repository.MysqlMessageRepository;
-import org.noahsark.mqtt.broker.repository.RetainedRepository;
-import org.noahsark.mqtt.broker.repository.SubscriptionsRepository;
-import org.noahsark.mqtt.broker.protocol.entity.StoredMessage;
-import org.noahsark.mqtt.broker.repository.MemoryRetainedRepository;
-import org.noahsark.mqtt.broker.repository.MemorySubscriptionsRepository;
-import org.noahsark.mqtt.broker.repository.MessageRepository;
+import org.noahsark.mqtt.broker.protocol.entity.Will;
 import org.noahsark.mqtt.broker.protocol.security.Authorizator;
 import org.noahsark.mqtt.broker.protocol.security.PermitAllAuthorizator;
 import org.noahsark.mqtt.broker.protocol.subscription.CTrieSubscriptionDirectory;
 import org.noahsark.mqtt.broker.protocol.subscription.Subscription;
 import org.noahsark.mqtt.broker.protocol.subscription.SubscriptionsDirectory;
 import org.noahsark.mqtt.broker.protocol.subscription.Topic;
+import org.noahsark.mqtt.broker.repository.MessageRepository;
+import org.noahsark.mqtt.broker.repository.OffsetGenerator;
+import org.noahsark.mqtt.broker.repository.RetainedRepository;
+import org.noahsark.mqtt.broker.repository.SubscriptionsRepository;
+import org.noahsark.mqtt.broker.repository.entity.StoredMessage;
+import org.noahsark.mqtt.broker.repository.factory.CacheBeanFactory;
+import org.noahsark.mqtt.broker.repository.factory.DbBeanFactory;
+import org.noahsark.mqtt.broker.transport.session.MqttSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +67,12 @@ public class DefaultMqttEngine implements MqttEngine {
 
     private SubscriptionsDirectory subscriptionsDirectory;
 
+    private OffsetGenerator offsetGenerator;
+
+    private DbBeanFactory dbBeanFactory;
+
+    private CacheBeanFactory cacheBeanFactory;
+
     private static class Holder {
         private static final DefaultMqttEngine INSTANCE = new DefaultMqttEngine();
     }
@@ -78,13 +82,17 @@ public class DefaultMqttEngine implements MqttEngine {
     }
 
     public void load() {
+        dbBeanFactory = MqttModuleFactory.getInstance().dbBeanFactory();
+        cacheBeanFactory = MqttModuleFactory.getInstance().cacheBeanFactory();
+
         authorizator = PermitAllAuthorizator.getInstance();
-        eventBus = MqttBeanFactory.getInstance().mqttEventBus();
-        messageRepository = new MysqlMessageRepository();
+        eventBus = MqttModuleFactory.getInstance().mqttEventBus();
+        messageRepository = dbBeanFactory.messageRepository();
 
-        retainedRepository = MemoryRetainedRepository.getInstance();
+        offsetGenerator = cacheBeanFactory.offsetGenerator();
+        retainedRepository = cacheBeanFactory.retainedRepository();
 
-        subscriptionsRepository = new MemorySubscriptionsRepository();
+        subscriptionsRepository = cacheBeanFactory.subscriptionsRepository();
         subscriptionsDirectory = new CTrieSubscriptionDirectory();
         subscriptionsDirectory.init(subscriptionsRepository);
     }
@@ -103,10 +111,10 @@ public class DefaultMqttEngine implements MqttEngine {
             return;
         }
 
-        Topic topic = msg.getTopic();
+        String topic = msg.getTopic();
         if (msg.isRetain()) {
-            // QoS == 0 && retain => clean old retained
-            retainedRepository.cleanRetained(topic);
+            // QoS == 0 && addRetainMessage => clean old retained
+            retainedRepository.clean(topic);
         }
 
         // 2, QOS0 无需持久化，广播消息即可。
@@ -127,7 +135,7 @@ public class DefaultMqttEngine implements MqttEngine {
         // 2, QOS1 持久化
         // MqttPublishMessage --> StoredMessage
         StoredMessage storedMessage = convertStoredMessage(msg);
-        messageRepository.store(storedMessage);
+        messageRepository.addMessage(storedMessage);
 
         // 2. 广播消息
         // MqttPublishMessage --> PublishInnerMessage
@@ -137,7 +145,7 @@ public class DefaultMqttEngine implements MqttEngine {
         // 3. 发送 ACK
         session.getConnection().sendPubAck(msg.getMessageId());
 
-        // 4. 处理 retain 数据
+        // 4. 处理 addRetainMessage 数据
         processDataRetain(msg);
 
     }
@@ -164,7 +172,7 @@ public class DefaultMqttEngine implements MqttEngine {
      */
     private boolean validateTopic(MqttSession session, PublishInnerMessage msg) {
         // 判断有效性
-        Topic topic = msg.getTopic();
+        Topic topic = new Topic(msg.getTopic());
 
         // verify if topic can be write
         topic.getTokens();
@@ -190,15 +198,15 @@ public class DefaultMqttEngine implements MqttEngine {
      * @param msg PublishInnerMessage
      */
     private void processDataRetain(PublishInnerMessage msg) {
-        // 1. case 1: retain = 1 且 payload 为 null, 清除 retain 消息
-        // 2. case2: retain = 1 且 payload 不为 null，则更新 retain 消息，每一个 topic，retain 消息只保留最新的一条。
-        Topic topic = msg.getTopic();
+        // 1. case 1: addRetainMessage = 1 且 payload 为 null, 清除 addRetainMessage 消息
+        // 2. case2: addRetainMessage = 1 且 payload 不为 null，则更新 addRetainMessage 消息，每一个 topic，addRetainMessage 消息只保留最新的一条。
+        String topic = msg.getTopic();
         if (msg.isRetain()) {
             if (msg.getPayload() == null || msg.getPayload().length == 0) {
-                retainedRepository.cleanRetained(topic);
+                retainedRepository.clean(topic);
             } else {
                 // before wasn't stored
-                retainedRepository.retain(topic, new RetainedMessage(msg.getQos(), msg.getPayload()));
+                retainedRepository.addRetainMessage(topic, new RetainedMessage(msg.getQos(), msg.getPayload()));
             }
         }
     }
@@ -208,7 +216,7 @@ public class DefaultMqttEngine implements MqttEngine {
         // 1, QOS1 持久化
         // MqttPublishMessage --> StoredMessage
         StoredMessage storedMessage = convertStoredMessage(msg);
-        messageRepository.store(storedMessage);
+        messageRepository.addMessage(storedMessage);
 
         // 2. 删除session中的消息
         session.receivedPubRelQos2(msg.getMessageId());
@@ -220,7 +228,7 @@ public class DefaultMqttEngine implements MqttEngine {
         // 3. 发送 PUBCOMP 消息
         session.getConnection().sendPubCompMessage(msg.getMessageId());
 
-        // 4. 处理 retain 数据
+        // 4. 处理 addRetainMessage 数据
         processDataRetain(msg);
     }
 
@@ -234,15 +242,16 @@ public class DefaultMqttEngine implements MqttEngine {
 
         StoredMessage storedMessage = new StoredMessage();
         storedMessage.setQos(msg.getQos());
-        storedMessage.setTopic(msg.getTopic().getRawTopic());
+        storedMessage.setTopic(msg.getTopic());
         storedMessage.setPayload(msg.getPayload());
+        storedMessage.setOffset(offsetGenerator.incrOffset(msg.getTopic()));
 
         return storedMessage;
     }
 
 
     @Override
-    public void subcribe(MqttSession session, MqttSubscribeMessage msg) {
+    public void subscribe(MqttSession session, MqttSubscribeMessage msg) {
 
         // verify which topics of the subscribe ongoing has read access permission
         String clientId = session.getClientId();
@@ -259,16 +268,7 @@ public class DefaultMqttEngine implements MqttEngine {
                     return new Subscription(clientId, topic, req.qualityOfService());
                 }).collect(Collectors.toList());
 
-        LOG.info("Before Ctrie tree:{}", subscriptionsDirectory.dumpTree());
-        Set<String> beforeHeadTokens = subscriptionsDirectory.traverseHeadTokens();
-
-        for (Subscription subscription : newSubscriptions) {
-            subscriptionsDirectory.add(subscription);
-        }
-
-        Set<String> afterHeadTokens = subscriptionsDirectory.traverseHeadTokens();
-
-        LOG.info("After Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+        subscribe(newSubscriptions);
 
         // 1.1 向 Session 中加入订阅关系
         session.addSubscriptions(newSubscriptions);
@@ -280,6 +280,21 @@ public class DefaultMqttEngine implements MqttEngine {
         // 1.3 发送 Retained 数据
         publishRetainedMessagesForSubscriptions(session, newSubscriptions);
 
+    }
+
+    @Override
+    public void subscribe(List<Subscription> subscriptions) {
+        LOG.info("Before Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+        Set<String> beforeHeadTokens = subscriptionsDirectory.traverseHeadTokens();
+
+        for (Subscription subscription : subscriptions) {
+            subscriptionsDirectory.add(subscription);
+        }
+
+        Set<String> afterHeadTokens = subscriptionsDirectory.traverseHeadTokens();
+
+        LOG.info("After Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+
         // 2. 广播服务器与topic的订阅关系(增量新增)
         // TODO
         broadcastSubscription(beforeHeadTokens, afterHeadTokens);
@@ -289,7 +304,7 @@ public class DefaultMqttEngine implements MqttEngine {
 
         for (Subscription subscription : newSubscriptions) {
             final String topicFilter = subscription.getTopicFilter().toString();
-            final List<RetainedMessage> retainedMsgs = retainedRepository.retainedOnTopic(topicFilter);
+            final List<RetainedMessage> retainedMsgs = retainedRepository.getAllRetainMessage(topicFilter);
 
             if (retainedMsgs.isEmpty()) {
                 // not found
@@ -338,7 +353,7 @@ public class DefaultMqttEngine implements MqttEngine {
             subscriptionsDirectory.removeSubscription(topic, clientId);
 
             // TODO remove the subscriptions to Session
-            //  clientSession.unsubscribeFrom(topic);
+            session.removeSubscription(topic.getRawTopic());
         }
 
         Set<String> afterHeadTokens = subscriptionsDirectory.traverseHeadTokens();
@@ -350,6 +365,24 @@ public class DefaultMqttEngine implements MqttEngine {
         session.getConnection().sendUnsubAckMessage(topics, clientId, messageId);
 
         // 2. 广播服务器与topic的订阅关系(如果减少，则移除订阅关系)
+        // TODO
+        broadcastSubscription(beforeHeadTokens, afterHeadTokens);
+    }
+
+    @Override
+    public void unsubscribe(List<Subscription> subscriptions) {
+        LOG.info("Before Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+        Set<String> beforeHeadTokens = subscriptionsDirectory.traverseHeadTokens();
+
+        for (Subscription subscription : subscriptions) {
+            subscriptionsDirectory.removeSubscription(subscription.getTopicFilter(), subscription.getClientId());
+        }
+
+        Set<String> afterHeadTokens = subscriptionsDirectory.traverseHeadTokens();
+
+        LOG.info("After Ctrie tree:{}", subscriptionsDirectory.dumpTree());
+
+        // 2. 广播服务器与topic的订阅关系(增量新增)
         // TODO
         broadcastSubscription(beforeHeadTokens, afterHeadTokens);
     }
@@ -378,7 +411,7 @@ public class DefaultMqttEngine implements MqttEngine {
     public void fireWill(Will will) {
         // MQTT 3.1.2.8-17
 
-        PublishInnerMessage publishInnerMessage = new PublishInnerMessage(new Topic(will.getTopic()), will.isRetained(),
+        PublishInnerMessage publishInnerMessage = new PublishInnerMessage(will.getTopic(), will.isRetained(),
                 will.getQos(), will.getPayload());
 
         ClusterMessage clusterMessage = new ClusterMessage(ClusterMessage.ClusterMessageType.PUBLISH, publishInnerMessage);
@@ -401,7 +434,7 @@ public class DefaultMqttEngine implements MqttEngine {
 
         ClusterSubscriptionInfo subscriptionInfo = new ClusterSubscriptionInfo();
 
-        subscriptionInfo.setServerId(MqttBeanFactory.getInstance().mqttEventBusManager().getCurrentServer().getId());
+        subscriptionInfo.setServerId(MqttModuleFactory.getInstance().mqttEventBusManager().getCurrentServer().getId());
         subscriptionInfo.setAddition(difference(afterSet, beforeSet));
         subscriptionInfo.setRemove(difference(beforeSet, afterSet));
 

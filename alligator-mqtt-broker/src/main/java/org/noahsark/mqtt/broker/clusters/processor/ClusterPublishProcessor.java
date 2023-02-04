@@ -2,9 +2,8 @@ package org.noahsark.mqtt.broker.clusters.processor;
 
 import org.noahsark.mqtt.broker.clusters.entity.ClusterMessage;
 import org.noahsark.mqtt.broker.clusters.entity.ClusterPublishInnerInfo;
-import org.noahsark.mqtt.broker.common.factory.MqttBeanFactory;
+import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
 import org.noahsark.mqtt.broker.protocol.entity.PublishInnerMessage;
-import org.noahsark.mqtt.broker.protocol.subscription.Topic;
 import org.noahsark.rpc.common.dispatcher.AbstractProcessor;
 import org.noahsark.rpc.common.remote.Response;
 import org.noahsark.rpc.common.remote.RpcContext;
@@ -29,7 +28,7 @@ public class ClusterPublishProcessor extends AbstractProcessor<ClusterPublishInn
         PublishInnerMessage publishInnerMessage = copyPublishMessage(clusterPublishInnerInfo);
 
         ClusterMessage clusterMessage = new ClusterMessage(ClusterMessage.ClusterMessageType.PUBLISH, publishInnerMessage);
-        MqttBeanFactory.getInstance().mqttEventBus().receive(clusterMessage);
+        MqttModuleFactory.getInstance().mqttEventBus().receive(clusterMessage);
 
         rpcContext.sendResponse(Response.buildCommonResponse(rpcContext.getCommand(), 0, "success"));
 
@@ -56,7 +55,7 @@ public class ClusterPublishProcessor extends AbstractProcessor<ClusterPublishInn
         message.setMessageId(clusterPublishInnerInfo.getMessageId());
         message.setRetain(clusterPublishInnerInfo.isRetain());
         message.setQos(clusterPublishInnerInfo.getQos());
-        message.setTopic(new Topic(clusterPublishInnerInfo.getTopic()));
+        message.setTopic(clusterPublishInnerInfo.getTopic());
         message.setPayload(clusterPublishInnerInfo.getPayload());
 
         return message;

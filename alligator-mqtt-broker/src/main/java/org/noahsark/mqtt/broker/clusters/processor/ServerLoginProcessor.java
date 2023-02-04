@@ -2,7 +2,7 @@ package org.noahsark.mqtt.broker.clusters.processor;
 
 import org.noahsark.mqtt.broker.clusters.entity.ServerLoginfo;
 import org.noahsark.mqtt.broker.clusters.entity.ServerSubject;
-import org.noahsark.mqtt.broker.common.factory.MqttBeanFactory;
+import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
 import org.noahsark.rpc.common.dispatcher.AbstractProcessor;
 import org.noahsark.rpc.common.remote.Response;
 import org.noahsark.rpc.common.remote.RpcContext;
@@ -31,7 +31,7 @@ public class ServerLoginProcessor extends AbstractProcessor<ServerLoginfo> {
         ServerSubject subject = new ServerSubject(index.toString());
         session.setSubject(subject);
 
-        MqttBeanFactory.getInstance().mqttEventBusManager().addServerSession(index, session);
+        MqttModuleFactory.getInstance().mqttEventBusManager().addServerSession(index, session);
         LOG.info("MQTT node[{}] session has built.", index);
 
         rpcContext.sendResponse(Response.buildCommonResponse(rpcContext.getCommand(), 0, "success"));

@@ -8,7 +8,7 @@
     </properties>
 
     <typeAliases>
-        <typeAlias alias="StoredMessage" type="org.noahsark.mqtt.broker.protocol.entity.StoredMessage"/>
+        <typeAlias alias="StoredMessage" type="org.noahsark.mqtt.broker.repository.entity.StoredMessage"/>
     </typeAliases>
 
     <environments default="development">

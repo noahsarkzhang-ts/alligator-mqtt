@@ -15,15 +15,33 @@
  */
 package org.noahsark.mqtt.broker.repository;
 
-import org.noahsark.mqtt.broker.protocol.subscription.Subscription;
+import org.noahsark.mqtt.broker.repository.entity.StoredSubscription;
 
 import java.util.List;
 
 public interface SubscriptionsRepository {
 
-    List<Subscription> listAllSubscriptions();
+    /**
+     * 获取指定 clientId 的订阅信息
+     *
+     * @param clientId 客户端id
+     * @return 订阅关系列表
+     */
+    List<StoredSubscription> getAllSubscriptions(String clientId);
 
-    void addNewSubscription(Subscription subscription);
+    /**
+     * 向指定 clientId 下添加订阅关系
+     *
+     * @param clientId     客户端id
+     * @param subscription 订阅关系
+     */
+    void addSubscription(String clientId, StoredSubscription subscription);
 
-    void removeSubscription(String topic, String clientId);
+    /**
+     * 移除指定clientId下的订阅关系
+     *
+     * @param clientId 客户端id
+     * @param topic    topicFilter
+     */
+    void removeSubscription(String clientId, String topic);
 }

@@ -37,17 +37,18 @@ public class CTrieSubscriptionDirectory implements SubscriptionsDirectory {
         LOG.info("Initializing CTrie");
         ctrie = new CTrie();
 
-        LOG.info("Initializing subscriptions store...");
+        LOG.info("Initializing subscriptions addMessage...");
         this.subscriptionsRepository = subscriptionsRepository;
         // reload any subscriptions persisted
         if (LOG.isTraceEnabled()) {
             LOG.trace("Reloading all stored subscriptions. SubscriptionTree = {}", dumpTree());
         }
 
-        for (Subscription subscription : this.subscriptionsRepository.listAllSubscriptions()) {
+        // TODO
+        /*for (Subscription subscription : this.subscriptionsRepository.listAllSubscriptions()) {
             LOG.debug("Re-subscribing {}", subscription);
             ctrie.addToTree(subscription);
-        }
+        }*/
         if (LOG.isTraceEnabled()) {
             LOG.trace("Stored subscriptions have been reloaded. SubscriptionTree = {}", dumpTree());
         }
@@ -88,7 +89,7 @@ public class CTrieSubscriptionDirectory implements SubscriptionsDirectory {
     @Override
     public void add(Subscription newSubscription) {
         ctrie.addToTree(newSubscription);
-        subscriptionsRepository.addNewSubscription(newSubscription);
+        /*subscriptionsRepository.addNewSubscription(newSubscription);*/
     }
 
     /**
@@ -101,7 +102,7 @@ public class CTrieSubscriptionDirectory implements SubscriptionsDirectory {
     @Override
     public void removeSubscription(Topic topic, String clientID) {
         ctrie.removeFromTree(topic, clientID);
-        this.subscriptionsRepository.removeSubscription(topic.toString(), clientID);
+        /*this.subscriptionsRepository.removeSubscription(topic.toString(), clientID);*/
     }
 
     @Override

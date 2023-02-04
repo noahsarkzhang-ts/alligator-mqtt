@@ -6,6 +6,7 @@ import org.noahsark.mqtt.broker.clusters.entity.ClusterSubscriptionInfo;
 import org.noahsark.mqtt.broker.clusters.entity.MqttServerInfo;
 import org.noahsark.mqtt.broker.clusters.entity.ServerLoginfo;
 import org.noahsark.mqtt.broker.clusters.entity.ServerSubject;
+import org.noahsark.mqtt.broker.clusters.processor.ClusterClientLogoutProcessor;
 import org.noahsark.mqtt.broker.clusters.processor.ClusterPublishProcessor;
 import org.noahsark.mqtt.broker.clusters.processor.ClusterSubscriptionProcessor;
 import org.noahsark.mqtt.broker.clusters.processor.ServerLoginProcessor;
@@ -181,6 +182,11 @@ public class ClusterMqttEventBusManager implements MqttEventBusManager {
         return this.currentServer;
     }
 
+    @Override
+    public String getClusterModel() {
+        return "cluster";
+    }
+
     private void register() {
         // 1. 注册 protobuf 序列化器
         ProtobufSerializer protobufSerializer = new ProtobufSerializer();
@@ -194,9 +200,13 @@ public class ClusterMqttEventBusManager implements MqttEventBusManager {
         ClusterPublishProcessor publishProcessor = new ClusterPublishProcessor();
         publishProcessor.register();
 
-        // 3. 注册 广播 Subscription 处理器
+        // 4. 注册 广播 Subscription 处理器
         ClusterSubscriptionProcessor subscriptionProcessor = new ClusterSubscriptionProcessor();
         subscriptionProcessor.register();
+
+        // 5. 注册 Client 下线处理器
+        ClusterClientLogoutProcessor logoutProcessor = new ClusterClientLogoutProcessor();
+        logoutProcessor.register();
     }
 
     private void startupServer() {

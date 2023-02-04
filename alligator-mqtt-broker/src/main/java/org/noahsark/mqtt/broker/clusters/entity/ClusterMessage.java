@@ -37,6 +37,6 @@ public class ClusterMessage {
     }
 
     public enum ClusterMessageType {
-        PUBLISH,SUBSCRIPTION
+        PUBLISH,SUBSCRIPTION,LOGOUT
     }
 }

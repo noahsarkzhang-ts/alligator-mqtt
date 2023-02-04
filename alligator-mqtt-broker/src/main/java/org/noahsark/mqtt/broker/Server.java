@@ -36,11 +36,9 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.noahsark.mqtt.broker.clusters.ClusterMqttEventBusManager;
-import org.noahsark.mqtt.broker.clusters.ClustersEventBus;
 import org.noahsark.mqtt.broker.clusters.MqttEventBus;
 import org.noahsark.mqtt.broker.clusters.MqttEventBusManager;
-import org.noahsark.mqtt.broker.common.factory.MqttBeanFactory;
+import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
 import org.noahsark.mqtt.broker.transport.config.BrokerConstants;
 import org.noahsark.mqtt.broker.transport.ssl.DefaultMqttSslContextFactory;
 import org.noahsark.mqtt.broker.transport.ssl.SslContextFactory;
@@ -116,7 +114,7 @@ public class Server {
         SslContextFactory sslCtxCreator = new DefaultMqttSslContextFactory(config);
         LOG.info("Using default SSL session creator");
 
-        loadBeans(config);
+        loadModule(config);
 
         final MqttEntryHandler mqttHandler = new MqttEntryHandler();
 
@@ -131,17 +129,17 @@ public class Server {
         initialized = true;
     }
 
-    private void loadBeans(Configuration config) {
-        MqttBeanFactory beanFactory = MqttBeanFactory.getInstance();
+    private void loadModule(Configuration config) {
+        MqttModuleFactory beanFactory = MqttModuleFactory.getInstance();
 
         beanFactory.load(config);
     }
 
     private void startCluster() {
-        MqttEventBusManager eventBusManager = MqttBeanFactory.getInstance().mqttEventBusManager();
+        MqttEventBusManager eventBusManager = MqttModuleFactory.getInstance().mqttEventBusManager();
         eventBusManager.startup();
 
-        MqttEventBus mqttEventBus = MqttBeanFactory.getInstance().mqttEventBus();
+        MqttEventBus mqttEventBus = MqttModuleFactory.getInstance().mqttEventBus();
         mqttEventBus.startup();
     }
 

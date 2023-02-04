@@ -26,5 +26,7 @@ public interface MqttEventBusManager extends Lifecycle {
 
     MqttServerInfo getCurrentServer();
 
+    String getClusterModel();
+
     void dump();
 }

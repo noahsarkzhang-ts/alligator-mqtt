@@ -1,6 +1,7 @@
 package org.noahsark.mqtt.broker.clusters;
 
-import org.noahsark.mqtt.broker.common.factory.MqttBeanFactory;
+import org.noahsark.mqtt.broker.clusters.entity.ClusterClientLogoutInfo;
+import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
 import org.noahsark.rpc.common.constant.SerializerType;
 import org.noahsark.rpc.common.remote.CommandCallback;
 import org.noahsark.rpc.common.remote.Request;
@@ -102,6 +103,12 @@ public class ClustersEventBus extends AbstractMqttEventBus {
 
                 break;
             }
+            case LOGOUT: {
+                ClusterClientLogoutInfo clientLogoutInfo = (ClusterClientLogoutInfo) msg.getMessage();
+                processClientLogoutBroadcast(clientLogoutInfo);
+
+                break;
+            }
             default: {
                 break;
             }
@@ -111,10 +118,10 @@ public class ClustersEventBus extends AbstractMqttEventBus {
 
     private void processPublishBroadcast(PublishInnerMessage msg) {
 
-        Topic topic = msg.getTopic();
+        Topic topic = new Topic(msg.getTopic());
         Token token = topic.headToken();
 
-        final Map<String, Set<Integer>> topicHolders = MqttBeanFactory.getInstance().mqttEventBusManager().getTopicHolders();
+        final Map<String, Set<Integer>> topicHolders = MqttModuleFactory.getInstance().mqttEventBusManager().getTopicHolders();
 
         Set<Integer> serverSet = topicHolders.get(token.toString());
         if (serverSet == null || serverSet.isEmpty()) {
@@ -124,7 +131,7 @@ public class ClustersEventBus extends AbstractMqttEventBus {
             return;
         }
 
-        Map<Integer, Session> sessionMap = MqttBeanFactory.getInstance().mqttEventBusManager().traverseSessions();
+        Map<Integer, Session> sessionMap = MqttModuleFactory.getInstance().mqttEventBusManager().traverseSessions();
         Set<Session> sessions = new HashSet<>();
 
         for (Integer serverId : serverSet) {
@@ -157,7 +164,7 @@ public class ClustersEventBus extends AbstractMqttEventBus {
     }
 
     private void processSubscriptionBroadcast(ClusterSubscriptionInfo msg) {
-        final Map<Integer, Session> sessionMap = MqttBeanFactory.getInstance().mqttEventBusManager().traverseSessions();
+        final Map<Integer, Session> sessionMap = MqttModuleFactory.getInstance().mqttEventBusManager().traverseSessions();
         final Collection<Session> sessions = sessionMap.values();
 
         sessions.forEach(session -> {
@@ -181,6 +188,33 @@ public class ClustersEventBus extends AbstractMqttEventBus {
 
     }
 
+    private void processClientLogoutBroadcast(ClusterClientLogoutInfo msg) {
+        final Map<Integer, Session> sessionMap = MqttModuleFactory.getInstance().mqttEventBusManager().traverseSessions();
+
+        Integer serverId = msg.getServerId();
+        Session session = sessionMap.get(serverId);
+
+        if (session == null) {
+            return;
+        }
+
+        Request request = buildLogoutRequest(msg);
+
+        session.invoke(request, new CommandCallback() {
+            @Override
+            public void callback(Object result, int currentFanout, int fanout) {
+                LOG.info("Send logout message successfully:{},{}", session.getSubject().getId(), msg);
+            }
+
+            @Override
+            public void failure(Throwable cause, int currentFanout, int fanout) {
+                LOG.info("Send logout message failed:{},{}", session.getSubject().getId(), msg);
+            }
+
+        }, 300000);
+
+    }
+
     private ClusterPublishInnerInfo copyClusterInfo(PublishInnerMessage msg) {
         ClusterPublishInnerInfo clusterPublishInnerInfo = new ClusterPublishInnerInfo();
 
@@ -188,7 +222,7 @@ public class ClustersEventBus extends AbstractMqttEventBus {
         clusterPublishInnerInfo.setPayload(msg.getPayload());
         clusterPublishInnerInfo.setQos(msg.getQos());
         clusterPublishInnerInfo.setRetain(msg.isRetain());
-        clusterPublishInnerInfo.setTopic(msg.getTopic().getRawTopic());
+        clusterPublishInnerInfo.setTopic(msg.getTopic());
 
         return clusterPublishInnerInfo;
     }
@@ -202,6 +236,10 @@ public class ClustersEventBus extends AbstractMqttEventBus {
     private Request buildSubscriptionRequest(ClusterSubscriptionInfo msg) {
 
         return buildRequest(5, 102, msg);
+    }
+
+    private Request buildLogoutRequest(ClusterClientLogoutInfo msg) {
+        return buildRequest(5, 103, msg);
     }
 
     private Request buildRequest(int biz, int cmd, Object payload) {
@@ -239,7 +277,7 @@ public class ClustersEventBus extends AbstractMqttEventBus {
     }
 
     private void processSubscriptionReceive(ClusterSubscriptionInfo msg) {
-        MqttBeanFactory.getInstance().mqttEventBusManager().subscription(msg);
+        MqttModuleFactory.getInstance().mqttEventBusManager().subscription(msg);
     }
 
     private static class MessageProcessThread extends ServiceThread {

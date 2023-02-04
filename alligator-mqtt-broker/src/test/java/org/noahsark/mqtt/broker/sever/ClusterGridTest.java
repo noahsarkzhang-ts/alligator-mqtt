@@ -6,7 +6,7 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.junit.Test;
 import org.noahsark.mqtt.broker.Server;
 import org.noahsark.mqtt.broker.clusters.MqttEventBusManager;
-import org.noahsark.mqtt.broker.common.factory.MqttBeanFactory;
+import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +29,7 @@ public class ClusterGridTest {
 
     @Test
     public void testMqttClusterGrid1() {
-        MqttEventBusManager node1 = MqttBeanFactory.getInstance().mqttEventBusManager();
+        MqttEventBusManager node1 = MqttModuleFactory.getInstance().mqttEventBusManager();
         Configuration configuration = getConfiguration(NODE1_CONFIG);
 
         node1.load(configuration);
@@ -48,7 +48,7 @@ public class ClusterGridTest {
 
     @Test
     public void testMqttClusterGrid2() {
-        MqttEventBusManager node2 = MqttBeanFactory.getInstance().mqttEventBusManager();
+        MqttEventBusManager node2 = MqttModuleFactory.getInstance().mqttEventBusManager();
         Configuration configuration = getConfiguration(NODE2_CONFIG);
 
         node2.load(configuration);
@@ -69,7 +69,8 @@ public class ClusterGridTest {
     public void testNode1() {
         Server server = new Server();
 
-        String [] args = {"-f","E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\test\\resources\\config\\alligator1.properties"};
+        //String [] args = {"-f","E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\test\\resources\\config\\alligator1.properties"};
+        String [] args = null;
 
         server.start(args);
 

@@ -146,7 +146,7 @@ public class DefaultMqttSslContextFactory implements SslContextFactory {
                 return SslContextBuilder.forServer(key, certChain);
             }
         }
-        throw new KeyManagementException("the SSL key-store does not contain a private key");
+        throw new KeyManagementException("the SSL key-addMessage does not contain a private key");
     }
 
     private static void addClientAuthentication(KeyStore ks, SslContextBuilder contextBuilder)

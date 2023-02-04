@@ -1,0 +1,2 @@
+org.noahsark.mqtt.broker.repository.factory.RedisCacheBeanFactory
+org.noahsark.mqtt.broker.repository.factory.MemoryCacheBeanFactory

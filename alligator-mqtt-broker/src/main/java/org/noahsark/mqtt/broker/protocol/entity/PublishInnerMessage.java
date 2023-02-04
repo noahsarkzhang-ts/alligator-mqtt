@@ -1,7 +1,5 @@
 package org.noahsark.mqtt.broker.protocol.entity;
 
-import org.noahsark.mqtt.broker.protocol.subscription.Topic;
-
 /**
  * Mqtt 消息
  *
@@ -10,7 +8,7 @@ import org.noahsark.mqtt.broker.protocol.subscription.Topic;
  **/
 public class PublishInnerMessage implements EnqueuedMessage {
 
-    private Topic topic;
+    private String topic;
 
     private boolean retain;
 
@@ -20,21 +18,23 @@ public class PublishInnerMessage implements EnqueuedMessage {
 
     private int messageId;
 
+    private long timestamp;
+
     public PublishInnerMessage() {
     }
 
-    public PublishInnerMessage(Topic topic, boolean retain, int qos, byte[] payload) {
+    public PublishInnerMessage(String topic, boolean retain, int qos, byte[] payload) {
         this.topic = topic;
         this.retain = retain;
         this.qos = qos;
         this.payload = payload;
     }
 
-    public Topic getTopic() {
+    public String  getTopic() {
         return topic;
     }
 
-    public void setTopic(Topic topic) {
+    public void setTopic(String topic) {
         this.topic = topic;
     }
 
@@ -70,13 +70,22 @@ public class PublishInnerMessage implements EnqueuedMessage {
         this.messageId = messageId;
     }
 
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
     @Override
     public String toString() {
         return "PublishInnerMessage{" +
-                "topic=" + topic +
-                ", retain=" + retain +
+                "topic='" + topic + '\'' +
+                ", addRetainMessage=" + retain +
                 ", qos=" + qos +
                 ", messageId=" + messageId +
+                ", timestamp=" + timestamp +
                 '}';
     }
 }
