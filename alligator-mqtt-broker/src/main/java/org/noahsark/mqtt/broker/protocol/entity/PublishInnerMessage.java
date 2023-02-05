@@ -8,16 +8,34 @@ package org.noahsark.mqtt.broker.protocol.entity;
  **/
 public class PublishInnerMessage implements EnqueuedMessage {
 
+    /**
+     * 消息主题
+     */
     private String topic;
 
+    /**
+     * 是否是 Retain 数据
+     */
     private boolean retain;
 
+    /**
+     *  qos 级别
+     */
     private int qos;
 
+    /**
+     * 消息内容
+     */
     private byte[] payload;
 
+    /**
+     * 消息的 packageId
+     */
     private int messageId;
 
+    /**
+     * 产生的时间戳
+     */
     private long timestamp;
 
     public PublishInnerMessage() {

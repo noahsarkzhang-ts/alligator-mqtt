@@ -7,9 +7,24 @@ package org.noahsark.mqtt.broker.protocol.entity;
  * @date 2022/11/11 11:52
  **/
 public class Will {
+    /**
+     * 消息主题
+     */
     private String topic;
+
+    /**
+     * 消息内容
+     */
     private byte [] payload;
+
+    /**
+     * QoS 级别
+     */
     private int qos;
+
+    /**
+     * 是否是 retain 数据
+     */
     private boolean retained;
 
     public Will(String topic, byte [] payload, int qos, boolean retained) {

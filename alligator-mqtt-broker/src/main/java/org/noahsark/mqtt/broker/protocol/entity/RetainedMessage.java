@@ -10,7 +10,14 @@ import java.io.Serializable;
  **/
 public class RetainedMessage implements Serializable {
 
+    /**
+     * QoS 级别
+     */
     private int qos;
+
+    /**
+     * 消息内容
+     */
     private byte[] payload;
 
     public RetainedMessage(int qos, byte[] payload) {

@@ -58,7 +58,7 @@ public class RedisConstant {
     private static final String SESSION_WILL_FORMAT = "s:w:%s";
 
     /**
-     *  存放 Topic 的 addRetainMessage 信息
+     *  存放 Topic 的 Retain 信息
      *  格式：t:r:{topic}
      *  数据类型：List
      */
