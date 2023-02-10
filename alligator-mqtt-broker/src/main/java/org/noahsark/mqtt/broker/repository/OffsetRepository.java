@@ -34,7 +34,7 @@ public interface OffsetRepository {
      * @param clientId 客户端id
      * @param topic    消息主题
      */
-    int getTopicOffset(String clientId, String topic);
+    long getTopicOffset(String clientId, String topic);
 
     /**
      * 获取指定 clientId 下所有 topic 的消费进度
@@ -42,6 +42,6 @@ public interface OffsetRepository {
      * @param clientId 客户端id
      * @return 消费进度
      */
-    Map<String, Integer> getAllTopicOffsets(String clientId);
+    Map<String, Long> getAllTopicOffsets(String clientId);
 
 }

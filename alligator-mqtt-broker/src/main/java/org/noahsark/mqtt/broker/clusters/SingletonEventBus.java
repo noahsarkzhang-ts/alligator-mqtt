@@ -87,8 +87,19 @@ public class SingletonEventBus extends AbstractMqttEventBus {
 
                     message = messages.poll(TIMEOUT_MS, TimeUnit.MILLISECONDS);
 
-                    if (message != null) {
-                        publish2Subscribers((PublishInnerMessage) message.getMessage());
+                    if (message == null) {
+                        continue;
+                    }
+
+                    switch (message.getMessageType()) {
+                        case PUBLISH: {
+                            publish2Subscribers((PublishInnerMessage) message.getMessage());
+                            break;
+                        }
+                        default: {
+                            LOG.info("unsupported operation: {}", message.getMessage());
+                            break;
+                        }
                     }
 
                 } catch (Exception ex) {

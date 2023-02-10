@@ -69,4 +69,9 @@ public class MemorySubscriptionsRepository implements SubscriptionsRepository {
         }
 
     }
+
+    @Override
+    public void clean(String clientId) {
+        subscriptions.remove(clientId);
+    }
 }

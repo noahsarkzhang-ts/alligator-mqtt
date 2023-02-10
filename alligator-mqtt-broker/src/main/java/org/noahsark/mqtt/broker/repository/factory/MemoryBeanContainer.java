@@ -28,10 +28,10 @@ public class MemoryBeanContainer {
 
         if (bean == null) {
 
-            Constructor constroctor;
+            Constructor constructor;
             try {
-                constroctor = classz.getConstructor();
-                bean = (T) constroctor.newInstance();
+                constructor = classz.getConstructor();
+                bean = (T) constructor.newInstance();
 
                 beans.put(classz, bean);
 

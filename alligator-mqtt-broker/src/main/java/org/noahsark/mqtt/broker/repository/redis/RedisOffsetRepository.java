@@ -4,6 +4,7 @@ import org.noahsark.mqtt.broker.common.redis.executor.RedisCmdRunner;
 import org.noahsark.mqtt.broker.common.redis.executor.RedisScriptRunner;
 import org.noahsark.mqtt.broker.repository.OffsetRepository;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 /**
@@ -25,21 +26,29 @@ public class RedisOffsetRepository implements OffsetRepository {
 
     @Override
     public void addTopicOffset(String clientId, String topic, long offset) {
+        String key = String.format(RedisConstant.SESSION_TOPIC_OFFSET_FORMAT, clientId);
 
+        cmdRunner.hset(key, topic, Long.toString(offset).getBytes());
     }
 
     @Override
     public void updateTopicOffset(String clientId, String topic, long offset) {
+        String key = String.format(RedisConstant.SESSION_TOPIC_OFFSET_FORMAT, clientId);
 
+        cmdRunner.hset(key, topic, Long.toString(offset).getBytes());
     }
 
     @Override
-    public int getTopicOffset(String clientId, String topic) {
-        return 0;
+    public long getTopicOffset(String clientId, String topic) {
+
+        String key = String.format(RedisConstant.SESSION_TOPIC_OFFSET_FORMAT, clientId);
+        BigDecimal offset = cmdRunner.getHashNumValue(key, topic);
+
+        return offset.longValue();
     }
 
     @Override
-    public Map<String, Integer> getAllTopicOffsets(String clientId) {
-        return null;
+    public Map<String, Long> getAllTopicOffsets(String clientId) {
+        return cmdRunner.getAllTopicOffsets(clientId);
     }
 }

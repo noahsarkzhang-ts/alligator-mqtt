@@ -66,11 +66,27 @@ public class ClusterGridTest {
     }
 
     @Test
+    public void testNode() {
+        Server server = new Server();
+
+        String[] args = {"-f", "E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\config\\alligator.properties"};
+        //String [] args = null;
+
+        server.start(args);
+
+        try {
+            TimeUnit.MINUTES.sleep(10);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
     public void testNode1() {
         Server server = new Server();
 
-        //String [] args = {"-f","E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\test\\resources\\config\\alligator1.properties"};
-        String [] args = null;
+        String[] args = {"-f", "E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\config\\alligator1.properties"};
+        //String [] args = null;
 
         server.start(args);
 
@@ -85,7 +101,7 @@ public class ClusterGridTest {
     public void testNode2() {
         Server server = new Server();
 
-        String [] args = {"-f","E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\test\\resources\\config\\alligator2.properties"};
+        String[] args = {"-f", "E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\config\\alligator2.properties"};
 
         server.start(args);
 
@@ -98,7 +114,7 @@ public class ClusterGridTest {
 
     @Test
     public void testNodeStart() {
-        String [] args = {"-f","E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\test\\resources\\config\\alligator.properties"};
+        String[] args = {"-f", "E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\config\\alligator.properties"};
         // String [] args = {};
 
         Server server = new Server();

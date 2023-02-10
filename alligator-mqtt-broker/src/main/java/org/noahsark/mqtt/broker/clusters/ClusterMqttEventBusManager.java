@@ -148,22 +148,26 @@ public class ClusterMqttEventBusManager implements MqttEventBusManager {
         Set<String> additions = info.getAddition();
         Set<String> removes = info.getRemove();
 
-        additions.forEach(token -> {
-            Set<Integer> serverSet = topicHolders.get(token);
-            if (serverSet != null) {
-                serverSet = new HashSet<>();
-                topicHolders.put(token, serverSet);
-            }
+        if (additions != null) {
+            additions.forEach(token -> {
+                Set<Integer> serverSet = topicHolders.get(token);
+                if (serverSet == null) {
+                    serverSet = new HashSet<>();
+                    topicHolders.put(token, serverSet);
+                }
 
-            serverSet.add(serverId);
-        });
+                serverSet.add(serverId);
+            });
+        }
 
-        removes.forEach(token -> {
-            Set<Integer> serverSet = topicHolders.get(token);
-            if (serverSet != null) {
-                serverSet.remove(serverId);
-            }
-        });
+        if (removes != null) {
+            removes.forEach(token -> {
+                Set<Integer> serverSet = topicHolders.get(token);
+                if (serverSet != null) {
+                    serverSet.remove(serverId);
+                }
+            });
+        }
 
     }
 

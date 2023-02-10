@@ -44,4 +44,10 @@ public interface SubscriptionsRepository {
      * @param topic    topicFilter
      */
     void removeSubscription(String clientId, String topic);
+
+    /**
+     * 清除指定clientId的订阅关系
+     * @param clientId
+     */
+    void clean(String clientId);
 }

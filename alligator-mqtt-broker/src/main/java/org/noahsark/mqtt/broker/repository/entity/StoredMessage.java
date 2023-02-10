@@ -47,10 +47,6 @@ public class StoredMessage implements Serializable {
         return id;
     }
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
     public int getQos() {
         return qos;
     }

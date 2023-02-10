@@ -295,6 +295,8 @@ public class MqttSession {
     public void cleanSubscriptions() {
 
         DefaultMqttEngine.getInstance().unsubscribe(getAllSubscriptions());
+
+        subscriptionsRepository.clean(clientId);
     }
 
     public void cleanInflightMsg() {

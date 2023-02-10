@@ -1,5 +1,6 @@
 package org.noahsark.mqtt.broker.repository.redis;
 
+import org.noahsark.mqtt.broker.clusters.serializer.ProtostuffUtils;
 import org.noahsark.mqtt.broker.common.redis.executor.RedisCmdRunner;
 import org.noahsark.mqtt.broker.common.redis.executor.RedisScriptRunner;
 import org.noahsark.mqtt.broker.protocol.entity.Will;
@@ -24,21 +25,29 @@ public class RedisWillRepository implements WillRepository {
 
     @Override
     public Will getWill(String clientId) {
-        return null;
+        String key = String.format(RedisConstant.SESSION_WILL_FORMAT, clientId);
+
+        return cmdRunner.get(key, Will.class);
     }
 
     @Override
     public void addWill(String clientId, Will will) {
+        String key = String.format(RedisConstant.SESSION_WILL_FORMAT, clientId);
 
+        cmdRunner.set(key, ProtostuffUtils.serialize(will));
     }
 
     @Override
     public void updateWill(String clientId, Will will) {
+        String key = String.format(RedisConstant.SESSION_WILL_FORMAT, clientId);
 
+        cmdRunner.set(key, ProtostuffUtils.serialize(will));
     }
 
     @Override
     public void removeWill(String clientId) {
+        String key = String.format(RedisConstant.SESSION_WILL_FORMAT, clientId);
 
+        cmdRunner.del(key);
     }
 }

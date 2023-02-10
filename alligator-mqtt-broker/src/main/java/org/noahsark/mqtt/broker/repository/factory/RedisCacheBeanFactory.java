@@ -94,10 +94,10 @@ public class RedisCacheBeanFactory implements CacheBeanFactory {
 
         if (bean == null) {
 
-            Constructor constroctor;
+            Constructor constructor;
             try {
-                constroctor = classz.getConstructor(RedisCmdRunner.class, RedisScriptRunner.class);
-                bean = (T) constroctor.newInstance(this.cmdRunner, this.scriptRunner);
+                constructor = classz.getConstructor(RedisCmdRunner.class, RedisScriptRunner.class);
+                bean = (T) constructor.newInstance(this.cmdRunner, this.scriptRunner);
 
                 beans.put(classz, bean);
 
@@ -128,9 +128,9 @@ public class RedisCacheBeanFactory implements CacheBeanFactory {
         poolConfig.setJmxEnabled(true);
         poolConfig.setMaxWaitMillis(3000);
 
-        // 从配置文件中读取
-        host = "192.168.7.115";
-        port = 6379;
+        // 从配置文件中读取 cache.redis.host
+        host = configuration.getString("cache.redis.host");
+        port = configuration.getInt("cache.redis.port");
 
         LOG.info("load:{}", RedisCacheBeanFactory.class.getSimpleName());
     }

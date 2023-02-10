@@ -84,10 +84,10 @@ public class MysqlDbBeanFactory implements DbBeanFactory {
 
         if (bean == null) {
 
-            Constructor constroctor;
+            Constructor constructor;
             try {
-                constroctor = classz.getConstructor(SqlSessionFactory.class);
-                bean = (T) constroctor.newInstance(this.sqlSessionFactory);
+                constructor = classz.getConstructor(SqlSessionFactory.class);
+                bean = (T) constructor.newInstance(this.sqlSessionFactory);
 
                 beans.put(classz, bean);
 

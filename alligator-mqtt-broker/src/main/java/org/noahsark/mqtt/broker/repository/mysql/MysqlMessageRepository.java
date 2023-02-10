@@ -1,8 +1,10 @@
 package org.noahsark.mqtt.broker.repository.mysql;
 
+import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.noahsark.mqtt.broker.repository.MessageRepository;
 import org.noahsark.mqtt.broker.repository.entity.StoredMessage;
+import org.noahsark.mqtt.broker.repository.mysql.mapper.StoredMessageMapper;
 
 import java.util.List;
 
@@ -23,16 +25,33 @@ public class MysqlMessageRepository implements MessageRepository {
 
     @Override
     public void addMessage(StoredMessage msg) {
+        try (SqlSession session = sessionFactory.openSession()) {
+            StoredMessageMapper mapper = session.getMapper(StoredMessageMapper.class);
+
+            mapper.addMessage(msg);
+
+            session.commit();
+        }
 
     }
 
     @Override
     public StoredMessage getMessage(String topic, long offset) {
-        return null;
+
+        try (SqlSession session = sessionFactory.openSession()) {
+            StoredMessageMapper mapper = session.getMapper(StoredMessageMapper.class);
+
+            return mapper.getMessage(topic, offset);
+        }
+
     }
 
     @Override
     public List<StoredMessage> getAllMessage(String topic, long startOffset) {
-        return null;
+        try (SqlSession session = sessionFactory.openSession()) {
+            StoredMessageMapper mapper = session.getMapper(StoredMessageMapper.class);
+
+            return mapper.getAllMessage(topic, startOffset);
+        }
     }
 }

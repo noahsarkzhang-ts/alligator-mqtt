@@ -139,26 +139,60 @@
                 <includes>
                     <include>**/*.xml</include>
                 </includes>
+                <filtering>false</filtering>
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
                 <includes>
                     <include>**/*.xml</include>
                     <include>**/*.properties</include>
-                    <include>META-INF/services/*</include>
+                    <include>META-INF/services/**</include>
                 </includes>
+                <filtering>false</filtering>
             </resource>
         </resources>
 
-        <!--<plugins>
+        <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.0.0</version>
                 <configuration>
-                    <compilerArgument>-Xlint:unchecked</compilerArgument>
+                    <archive>
+                        <manifest>
+                            <mainClass>org.noahsark.mqtt.broker.Server</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.spotify</groupId>
+                <artifactId>dockerfile-maven-plugin</artifactId>
+                <version>1.4.3</version>
+                <configuration>
+                    <repository>noahsark/mqtt-broker</repository>
+                    <tag>${project.version}</tag>
+                    <useMavenSettingsForAuth>true</useMavenSettingsForAuth>
+                    <buildArgs>
+                        <JAR_FILE>${project.build.finalName}-jar-with-dependencies.${project.packaging}</JAR_FILE>
+                        <VERSION>${project.version}</VERSION>
+                        <NAME>${project.artifactId}</NAME>
+                    </buildArgs>
                 </configuration>
             </plugin>
-        </plugins>-->
+        </plugins>
 
     </build>
 

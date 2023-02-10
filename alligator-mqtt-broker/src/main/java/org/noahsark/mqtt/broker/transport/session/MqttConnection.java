@@ -232,6 +232,12 @@ public class MqttConnection {
         }
         LOG.info("Notifying connection lost event. CId: {}, channel: {}", clientID, channel);
         MqttSession session = sessionManager.retrieve(clientID);
+
+        if (session == null) {
+            LOG.info("Session is null,may be Closed.");
+            return;
+        }
+
         if (session.hasWill()) {
             DefaultMqttEngine.getInstance().fireWill(session.getWill());
         }

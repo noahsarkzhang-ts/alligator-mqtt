@@ -12,6 +12,10 @@ public class BrokerConstants {
 
     public static final String DEFAULT_CONFIG = "config/alligator.properties";
 
+    public static final String DEFAULT_CONFIG_ENV = "ALLIGATOR_CONFIG_FILE";
+
+    public static final String DEFAULT_LOG_DIR_ENV = "ALLIGATOR_LOG_DIR";
+
     public static final String ARGS_CONFIG = "config_file";
 
     public static final String INTERCEPT_HANDLER_PROPERTY_NAME = "intercept.handler";

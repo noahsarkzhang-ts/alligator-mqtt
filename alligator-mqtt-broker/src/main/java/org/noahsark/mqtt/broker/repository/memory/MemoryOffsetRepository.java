@@ -23,12 +23,12 @@ public class MemoryOffsetRepository implements OffsetRepository {
     }
 
     @Override
-    public int getTopicOffset(String clientId, String topic) {
+    public long getTopicOffset(String clientId, String topic) {
         return 0;
     }
 
     @Override
-    public Map<String, Integer> getAllTopicOffsets(String clientId) {
+    public Map<String, Long> getAllTopicOffsets(String clientId) {
         return null;
     }
 }

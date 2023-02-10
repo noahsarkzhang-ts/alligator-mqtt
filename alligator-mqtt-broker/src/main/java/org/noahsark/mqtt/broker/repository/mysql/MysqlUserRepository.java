@@ -1,8 +1,10 @@
 package org.noahsark.mqtt.broker.repository.mysql;
 
+import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.noahsark.mqtt.broker.repository.UserRepository;
 import org.noahsark.mqtt.broker.repository.entity.StoredUser;
+import org.noahsark.mqtt.broker.repository.mysql.mapper.StoredUserMapper;
 
 /**
  * Mysql 版本的 Repository
@@ -21,6 +23,10 @@ public class MysqlUserRepository implements UserRepository {
 
     @Override
     public StoredUser findUser(String username) {
-        return null;
+        try (SqlSession session = sessionFactory.openSession()) {
+            StoredUserMapper mapper = session.getMapper(StoredUserMapper.class);
+
+            return mapper.findUser(username);
+        }
     }
 }

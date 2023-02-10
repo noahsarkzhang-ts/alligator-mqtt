@@ -69,7 +69,7 @@ public class SessionManager {
             // 更新缓存
             updateCache(newSession, clientId);
 
-            LOG.info("create new mqtt session:{}", clientId);
+            LOG.info("Create new mqtt session:{}", clientId);
 
             return;
         }
@@ -84,6 +84,7 @@ public class SessionManager {
             rebuildFromRemoteSession(oldStoredSession, conn, msg, clientId, userName);
         }
 
+        LOG.info("Rebuild mqtt session:{}", clientId);
     }
 
     private void rebuildFromLocalSession(StoredSession oldStoredSession, MqttConnection conn, MqttConnectMessage msg,
@@ -204,11 +205,14 @@ public class SessionManager {
     }
 
     public MqttSession retrieve(String clientId) {
+
         return pool.get(clientId);
     }
 
     public void remove(String clientId) {
         pool.remove(clientId);
+
+        LOG.info("Remove mqtt session:{}", clientId);
     }
 
     public void disconnect(String clientId) {
@@ -249,7 +253,9 @@ public class SessionManager {
         }
 
         // 6. 清除本地会话
-        pool.remove(clientId);
+        remove(clientId);
+
+        LOG.info("Client: {} logout successfully!", clientId);
     }
 
 }

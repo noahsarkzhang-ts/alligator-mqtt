@@ -64,14 +64,15 @@ public class ClustersEventBus extends AbstractMqttEventBus {
     @Override
     public void broadcast(ClusterMessage msg) {
         // TODO
+        LOG.info("Broadcast message,type:{},content:{}", msg.getMessageType(), msg.getMessage());
         sending.offer(msg);
     }
 
     @Override
     public void receive(ClusterMessage msg) {
         // TODO
+        LOG.info("Cluster receive message,type:{},content:{}", msg.getMessageType(), msg.getMessage());
         receive.offer(msg);
-        //publish2Subscribers(msg);
     }
 
     @Override

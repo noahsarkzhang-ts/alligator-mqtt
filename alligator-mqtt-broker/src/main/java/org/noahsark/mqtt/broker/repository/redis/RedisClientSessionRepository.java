@@ -24,26 +24,28 @@ public class RedisClientSessionRepository implements ClientSessionRepository {
 
     @Override
     public StoredSession getSession(String clientId) {
-        return null;
+        return cmdRunner.getSession(clientId);
     }
 
     @Override
     public void addSession(String clientId, StoredSession session) {
-
+        cmdRunner.updateSession(clientId, session);
     }
 
     @Override
     public void updateSession(String clientId, StoredSession session) {
-
+        cmdRunner.updateSession(clientId, session);
     }
 
     @Override
     public void removeSession(String clientId) {
-
+        String key = String.format(RedisConstant.SESSION_KEY_FORMAT, clientId);
+        cmdRunner.del(key);
     }
 
     @Override
     public boolean contain(String clientId) {
-        return false;
+        String key = String.format(RedisConstant.SESSION_KEY_FORMAT, clientId);
+        return cmdRunner.isExistKey(key);
     }
 }

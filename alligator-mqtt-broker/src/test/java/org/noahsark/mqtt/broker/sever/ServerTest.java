@@ -16,6 +16,14 @@ public class ServerTest {
     public void configurationTest() {
         Server server = new Server();
 
+        String[] args = {"-f", "E:\\git-repository\\alligator-mqtt\\alligator-mqtt-broker\\src\\main\\resources\\config\\alligator2.properties"};
+
+        System.out.println("Server Started......");
+
+        server.start(args);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
+
         /*Configuration configuration = server.getConfiguration(null);
 
         System.out.println(configuration.getString("host"));*/

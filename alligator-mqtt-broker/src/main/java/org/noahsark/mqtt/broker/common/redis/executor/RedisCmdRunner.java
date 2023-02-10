@@ -2,9 +2,18 @@ package org.noahsark.mqtt.broker.common.redis.executor;
 
 import com.google.common.base.Preconditions;
 
+import org.noahsark.mqtt.broker.clusters.serializer.ProtobufSerializer;
+import org.noahsark.mqtt.broker.clusters.serializer.ProtostuffUtils;
 import org.noahsark.mqtt.broker.common.redis.cmd.CmdEnum;
+import org.noahsark.mqtt.broker.common.redis.cmd.OperationEnum;
 import org.noahsark.mqtt.broker.common.redis.cmd.RedisCmd;
 import org.noahsark.mqtt.broker.common.redis.cmd.Triple;
+import org.noahsark.mqtt.broker.protocol.entity.PublishInnerMessage;
+import org.noahsark.mqtt.broker.protocol.entity.RetainedMessage;
+import org.noahsark.mqtt.broker.protocol.entity.Will;
+import org.noahsark.mqtt.broker.repository.entity.StoredSession;
+import org.noahsark.mqtt.broker.repository.entity.StoredSubscription;
+import org.noahsark.mqtt.broker.repository.redis.RedisConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -16,7 +25,9 @@ import redis.clients.jedis.params.SetParams;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -95,7 +106,7 @@ public class RedisCmdRunner {
             Pipeline pipeline = jedis.pipelined();
 
             int count = 0;
-            List<Triple> elements = null;
+            List<Triple> elements;
             for (RedisCmd cmd : cmds) {
 
                 if (CmdEnum.STRING.equals(cmd.getType())) {
@@ -183,6 +194,20 @@ public class RedisCmdRunner {
 
         try (Jedis jedis = jedisPool.getResource()) {
             result = jedis.sismember(key, element);
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when existing element!", ex);
+        }
+
+        return result;
+    }
+
+    public boolean isExistInHash(String key, String field) {
+
+        boolean result = false;
+
+        try (Jedis jedis = jedisPool.getResource()) {
+            result = jedis.hexists(key, field);
 
         } catch (Exception ex) {
             logger.error("catch an exception when existing element!", ex);
@@ -443,6 +468,29 @@ public class RedisCmdRunner {
         }
     }
 
+    public void set(String key, byte[] value) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            jedis.set(key.getBytes(), value);
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when set element!", ex);
+        }
+    }
+
+    public byte[] get(String key) {
+
+        byte[] value = null;
+
+        try (Jedis jedis = jedisPool.getResource()) {
+            value = jedis.get(key.getBytes());
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when set element!", ex);
+        }
+
+        return value;
+    }
+
     public boolean set(String key, String value, SetParams params) {
         try (Jedis jedis = jedisPool.getResource()) {
             String res = jedis.set(key, value, params);
@@ -514,6 +562,299 @@ public class RedisCmdRunner {
 
         return list;
 
+    }
+
+    public StoredSession getSession(String clientId) {
+        Preconditions.checkNotNull(clientId);
+
+        StoredSession session = null;
+        try (Jedis jedis = jedisPool.getResource()) {
+            String key = String.format(RedisConstant.SESSION_KEY_FORMAT, clientId);
+            byte[] value = jedis.get(key.getBytes());
+
+            if (value != null && value.length > 0) {
+                session = ProtostuffUtils.deserialize(value, StoredSession.class);
+            }
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when adding session!", ex);
+        }
+
+        return session;
+    }
+
+    public <T> T get(String key, Class<T> classz) {
+        Preconditions.checkNotNull(key);
+
+        T result = null;
+        try (Jedis jedis = jedisPool.getResource()) {
+
+            byte[] value = jedis.get(key.getBytes());
+
+            if (value != null && value.length > 0) {
+                result = ProtostuffUtils.deserialize(value, classz);
+            }
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when adding session!", ex);
+        }
+
+        return result;
+    }
+
+    public void updateSession(String clientId, StoredSession session) {
+        Preconditions.checkNotNull(clientId);
+        Preconditions.checkNotNull(session);
+
+        RedisCmd sessionCmd = new RedisCmd();
+        sessionCmd.setType(CmdEnum.STRING);
+        sessionCmd.setOperationType(OperationEnum.UPDATE);
+
+        Triple key = new Triple();
+        key.setKey(String.format(RedisConstant.SESSION_KEY_FORMAT, clientId));
+        key.setValue(ProtostuffUtils.serialize(session));
+
+        sessionCmd.setKey(key);
+
+        exeCmd(sessionCmd);
+
+    }
+
+    public void updateMessage(String clientId, PublishInnerMessage message, boolean isSending) {
+
+        Preconditions.checkNotNull(clientId);
+        Preconditions.checkNotNull(message);
+
+        RedisCmd messageCmd = new RedisCmd();
+        messageCmd.setType(CmdEnum.HASH);
+        messageCmd.setOperationType(OperationEnum.UPDATE);
+
+        Triple key = new Triple();
+        if (isSending) {
+            key.setKey(String.format(RedisConstant.SESSION_INFLIGHT_KEY_FORMAT, clientId));
+        } else {
+            key.setKey(String.format(RedisConstant.SESSION_RECEIVE_KEY_FORMAT, clientId));
+        }
+        messageCmd.setKey(key);
+
+        Triple element = new Triple();
+        element.setKey(String.valueOf(message.getMessageId()));
+        element.setValue(ProtostuffUtils.serialize(message));
+        messageCmd.addElement(element);
+
+        exeCmd(messageCmd);
+    }
+
+    public PublishInnerMessage getMessage(String clientId, int packetId, boolean isSending) {
+        Preconditions.checkNotNull(clientId);
+
+        PublishInnerMessage message = null;
+        try (Jedis jedis = jedisPool.getResource()) {
+
+            String key;
+            if (isSending) {
+                key = String.format(RedisConstant.SESSION_INFLIGHT_KEY_FORMAT, clientId);
+            } else {
+                key = String.format(RedisConstant.SESSION_RECEIVE_KEY_FORMAT, clientId);
+            }
+
+            byte[] value = jedis.hget(key.getBytes(), Integer.toString(packetId).getBytes());
+
+            if (value != null && value.length > 0) {
+                message = ProtostuffUtils.deserialize(value, PublishInnerMessage.class);
+            }
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when get message!", ex);
+        }
+
+        return message;
+    }
+
+    public List<PublishInnerMessage> getAllMessage(String clientId, boolean isSending) {
+        Preconditions.checkNotNull(clientId);
+
+        List<PublishInnerMessage> list = new ArrayList<>();
+
+        try (Jedis jedis = jedisPool.getResource()) {
+
+            // 游标初始值为0
+            String cursor = ScanParams.SCAN_POINTER_START;
+            ScanParams scanParams = new ScanParams();
+            scanParams.count(20);
+            String key;
+            if (isSending) {
+                key = String.format(RedisConstant.SESSION_INFLIGHT_KEY_FORMAT, clientId);
+            } else {
+                key = String.format(RedisConstant.SESSION_RECEIVE_KEY_FORMAT, clientId);
+            }
+
+            ScanResult<Map.Entry<byte[], byte[]>> hscanResult;
+            List<Map.Entry<byte[], byte[]>> scanResult;
+
+            long start = 0L;
+            long end = 0L;
+
+            do {
+
+                start = System.currentTimeMillis();
+                //使用hscan命令获取20条数据，使用cursor游标记录位置，下次循环使用
+                hscanResult = jedis.hscan(key.getBytes(), cursor.getBytes(), scanParams);
+                // 返回0,说明遍历完成
+                cursor = hscanResult.getCursor();
+                scanResult = hscanResult.getResult();
+
+                for (Map.Entry<byte[], byte[]> entry : scanResult) {
+                    list.add(ProtostuffUtils.deserialize(entry.getValue(), PublishInnerMessage.class));
+                }
+                end = System.currentTimeMillis();
+
+                logger.info("size of messages: {}, time(ms): {}", scanResult.size(), (end - start));
+
+            } while (!"0".equals(cursor));
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when getting messages!", ex);
+        }
+
+        return list;
+    }
+
+    public void hset(String key, String field, byte[] value) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            jedis.hset(key.getBytes(), field.getBytes(), value);
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when existing element!", ex);
+        }
+    }
+
+    public Map<String, Long> getAllTopicOffsets(String clientId) {
+        Preconditions.checkNotNull(clientId);
+
+        Map<String, Long> entries = new HashMap<>();
+
+        try (Jedis jedis = jedisPool.getResource()) {
+
+            // 游标初始值为0
+            String cursor = ScanParams.SCAN_POINTER_START;
+            ScanParams scanParams = new ScanParams();
+            scanParams.count(20);
+            String key = String.format(RedisConstant.SESSION_TOPIC_OFFSET_FORMAT, clientId);
+
+            ScanResult<Map.Entry<String, String>> hscanResult;
+            List<Map.Entry<String, String>> scanResult;
+
+            long start = 0L;
+            long end = 0L;
+
+            do {
+
+                start = System.currentTimeMillis();
+                //使用hscan命令获取20条数据，使用cursor游标记录位置，下次循环使用
+                hscanResult = jedis.hscan(key, cursor, scanParams);
+                // 返回0,说明遍历完成
+                cursor = hscanResult.getCursor();
+                scanResult = hscanResult.getResult();
+
+                for (Map.Entry<String, String> entry : scanResult) {
+                    entries.put(entry.getKey(), Long.parseLong(entry.getValue()));
+                }
+                end = System.currentTimeMillis();
+
+                logger.info("size of messages: {}, time(ms): {}", scanResult.size(), (end - start));
+
+            } while (!"0".equals(cursor));
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when getting topic offset!", ex);
+        }
+
+        return entries;
+    }
+
+    public void sadd(String key, byte[] value) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            jedis.sadd(key.getBytes(), value);
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when existing element!", ex);
+        }
+    }
+
+    public void rpush(String key, byte[] value) {
+        try (Jedis jedis = jedisPool.getResource()) {
+            jedis.rpush(key.getBytes(), value);
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when existing element!", ex);
+        }
+    }
+
+    public List<RetainedMessage> getAllRetainMessage(String topic) {
+        Preconditions.checkNotNull(topic);
+
+        List<RetainedMessage> list = new ArrayList<>();
+        String key = String.format(RedisConstant.TOPIC_RETAIN_FORMAT, topic);
+
+        try (Jedis jedis = jedisPool.getResource()) {
+            // TODO
+            Long len = jedis.llen(key);
+
+            List<byte[]> results = jedis.lrange(key.getBytes(), 0, len - 1);
+            results.forEach(element -> {
+                list.add(ProtostuffUtils.deserialize(element, RetainedMessage.class));
+            });
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when getting messages!", ex);
+        }
+
+        return list;
+    }
+
+    public List<StoredSubscription> getAllSubscriptions(String clientId) {
+        Preconditions.checkNotNull(clientId);
+
+        List<StoredSubscription> list = new ArrayList<>();
+
+        try (Jedis jedis = jedisPool.getResource()) {
+
+            // 游标初始值为0
+            String cursor = ScanParams.SCAN_POINTER_START;
+            ScanParams scanParams = new ScanParams();
+            scanParams.count(20);
+            String key = String.format(RedisConstant.SESSION_SUBSCRIPTION_FORMAT, clientId);
+
+            ScanResult<Map.Entry<byte[], byte[]>> hscanResult;
+            List<Map.Entry<byte[], byte[]>> scanResult;
+
+            long start = 0L;
+            long end = 0L;
+
+            do {
+
+                start = System.currentTimeMillis();
+                //使用hscan命令获取20条数据，使用cursor游标记录位置，下次循环使用
+                hscanResult = jedis.hscan(key.getBytes(), cursor.getBytes(), scanParams);
+                // 返回0,说明遍历完成
+                cursor = hscanResult.getCursor();
+                scanResult = hscanResult.getResult();
+
+                for (Map.Entry<byte[], byte[]> entry : scanResult) {
+                    list.add(ProtostuffUtils.deserialize(entry.getValue(), StoredSubscription.class));
+                }
+                end = System.currentTimeMillis();
+
+                logger.info("size of messages: {}, time(ms): {}", scanResult.size(), (end - start));
+
+            } while (!"0".equals(cursor));
+
+        } catch (Exception ex) {
+            logger.error("catch an exception when getting subscription!", ex);
+        }
+
+        return list;
     }
 
 }

@@ -46,7 +46,7 @@ public class SingletonMqttEventBusManager implements MqttEventBusManager {
 
     @Override
     public MqttServerInfo getCurrentServer() {
-        throw new OprationNotSupportedException();
+        return currentServer;
     }
 
     @Override

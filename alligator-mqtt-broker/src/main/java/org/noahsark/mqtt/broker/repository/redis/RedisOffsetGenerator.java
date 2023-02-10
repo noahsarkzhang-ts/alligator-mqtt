@@ -23,11 +23,13 @@ public class RedisOffsetGenerator implements OffsetGenerator {
 
     @Override
     public long incrOffset(String topic) {
-        return 0;
+        String key = String.format(RedisConstant.TOPIC_OFFSET_FORMAT, topic);
+        return cmdRunner.incr(key);
     }
 
     @Override
     public void resetOffset(String topic, long offset) {
-
+        String key = String.format(RedisConstant.TOPIC_OFFSET_FORMAT, topic);
+        cmdRunner.set(key, Long.toString(offset));
     }
 }

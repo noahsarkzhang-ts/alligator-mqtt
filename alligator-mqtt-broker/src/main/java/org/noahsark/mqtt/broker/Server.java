@@ -58,11 +58,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLEngine;
 import java.io.File;
+import java.net.URL;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static io.netty.channel.ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE;
 
@@ -92,7 +95,6 @@ public class Server {
     }
 
     public void start(String[] args) {
-
         parseArgs(args);
 
         String configFile = argsMap.get(BrokerConstants.ARGS_CONFIG);
@@ -121,7 +123,6 @@ public class Server {
         nettyAcceptor = new NettyAcceptor();
         nettyAcceptor.startup(mqttHandler, config, sslCtxCreator);
 
-        // startCluster(config);
         startCluster();
 
         final long startupTime = System.currentTimeMillis() - startTime;
@@ -183,8 +184,7 @@ public class Server {
             }
 
             if (confName == null || confName.length() == 0) {
-                confName = Thread.currentThread().getContextClassLoader()
-                        .getResource(BrokerConstants.DEFAULT_CONFIG).getPath();
+                confName = getDefaultConfigFile();
             }
 
             LOG.info("Config file:{}", confName);
@@ -194,6 +194,29 @@ public class Server {
         } catch (Exception ex) {
             LOG.warn("Parse args error.", ex);
         }
+    }
+
+    private String getDefaultConfigFile() {
+
+        String confName = System.getenv(BrokerConstants.DEFAULT_CONFIG_ENV);
+
+        if (confName != null) {
+            return confName;
+        }
+
+        confName = getWorkDir().concat("/").concat(BrokerConstants.DEFAULT_CONFIG);
+
+        return confName;
+    }
+
+    private String getWorkDir() {
+        String resourceDir = Thread.currentThread().getContextClassLoader()
+                .getResource("").getPath();
+
+        String[] dirs = resourceDir.split("/");
+        String[] projectDir = Arrays.copyOf(dirs, dirs.length - 2);
+
+        return String.join("/", projectDir);
     }
 
     private static class NettyAcceptor {
