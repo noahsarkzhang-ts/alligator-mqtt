@@ -1,0 +1,41 @@
+version: '3'
+
+networks:
+  mqtt:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.212.12.0/24
+          gateway: 10.212.12.1
+
+services:
+  redis:
+    container_name: mqtt_redis
+    image: redis:6.2
+    restart: always
+    networks:
+      - mqtt
+    ports:
+      - 6379:6379
+
+  mysql:
+    container_name: mqtt_mysql
+    image: mysql:5.7
+    restart: always
+    networks:
+      - mqtt
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+
+  mqtt_broker:
+    container_name: mqtt_broker
+    restart: always
+    image: noahsark/mqtt-broker:1.0-SNAPSHOT
+    networks:
+      - mqtt
+    ports:
+      - 1883:1883
+      - 8081:8081

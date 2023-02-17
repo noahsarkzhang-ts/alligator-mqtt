@@ -39,33 +39,31 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.noahsark.mqtt.broker.clusters.MqttEventBus;
 import org.noahsark.mqtt.broker.clusters.MqttEventBusManager;
 import org.noahsark.mqtt.broker.common.factory.MqttModuleFactory;
+import org.noahsark.mqtt.broker.transport.MqttEntryHandler;
 import org.noahsark.mqtt.broker.transport.config.BrokerConstants;
-import org.noahsark.mqtt.broker.transport.ssl.DefaultMqttSslContextFactory;
-import org.noahsark.mqtt.broker.transport.ssl.SslContextFactory;
 import org.noahsark.mqtt.broker.transport.handler.BytesMetricsHandler;
+import org.noahsark.mqtt.broker.transport.handler.DropWizardMetricsHandler;
 import org.noahsark.mqtt.broker.transport.handler.ErrorReportHandler;
 import org.noahsark.mqtt.broker.transport.handler.MessageMetricsHandler;
-import org.noahsark.mqtt.broker.transport.MqttEntryHandler;
 import org.noahsark.mqtt.broker.transport.handler.MqttIdleTimeoutHandler;
 import org.noahsark.mqtt.broker.transport.handler.MqttMessageLogHandler;
 import org.noahsark.mqtt.broker.transport.metric.BytesMetrics;
 import org.noahsark.mqtt.broker.transport.metric.BytesMetricsCollector;
 import org.noahsark.mqtt.broker.transport.metric.MessageMetrics;
 import org.noahsark.mqtt.broker.transport.metric.MessageMetricsCollector;
-import org.noahsark.mqtt.broker.transport.handler.DropWizardMetricsHandler;
+import org.noahsark.mqtt.broker.transport.ssl.DefaultMqttSslContextFactory;
+import org.noahsark.mqtt.broker.transport.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLEngine;
 import java.io.File;
-import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 import static io.netty.channel.ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE;
 
